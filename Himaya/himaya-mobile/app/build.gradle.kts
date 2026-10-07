@@ -17,7 +17,7 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -26,8 +26,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibilityJavaVersion JavaVersion.VERSION_17
-        targetCompatibilityJavaVersion JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
@@ -46,5 +46,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.0")
     // Coroutines for async work
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-    // Coil for image loading (placeholder)
+    // Coil for image loading
     implementation("com.squareup.coil:coil:2.6.0")
+    // AndroidX Core & AppCompat
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+}

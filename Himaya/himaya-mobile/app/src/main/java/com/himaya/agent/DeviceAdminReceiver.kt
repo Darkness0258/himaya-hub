@@ -1,9 +1,9 @@
 package com.himaya.agent
 
-import android.content.BroadcastReceiver
+import android.app.admin.DeviceAdminReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ActivityInfo
+import android.util.Log
 import android.widget.Toast
 
 /**
@@ -11,31 +11,19 @@ import android.widget.Toast
  *
  * Required for remote lock and wipe actions.
  * The device admin policy is defined in res/xml/device_admin.xml.
- *
- * ★ Insight ─────────────────────────────────────
- * BIND_DEVICE_ADMIN permission + meta-data pointing to device_admin.xml
- * are the minimum for device admin. The policy includes:
- *   - lock-password (screen lock)
- *   - wipe-data (factory reset)
- *   - disable-camera (prevent photo capture)
- *   - disable-usb-tether (prevent tethering)
- *
- * The user must enable the admin via a settings activity before
- * remote actions work. Until then, we just handle what we can.
- * ──────────────────────────────────────────────────
  */
-class DeviceAdminReceiver : android.app DeviceAdminReceiver() {
+class DeviceAdminReceiver : DeviceAdminReceiver() {
 
     override fun onEnabled(context: Context, intent: Intent) {
         super.onEnabled(context, intent)
-        Toast.makeText(context, "Device admin enabled", Toast.LENGTH_LONG).show()
-        Log.i("DeviceAdminReceiver", "Admin enabled")
+        Toast.makeText(context, "Himaya Device Protection Active", Toast.LENGTH_LONG).show()
+        Log.i("DeviceAdminReceiver", "Device Admin Enabled")
     }
 
     override fun onDisabled(context: Context, intent: Intent) {
         super.onDisabled(context, intent)
-        Toast.makeText(context, "Device admin disabled", Toast.LENGTH_LONG).show()
-        Log.i("DeviceAdminReceiver", "Admin disabled")
+        Toast.makeText(context, "Himaya Device Admin Disabled", Toast.LENGTH_LONG).show()
+        Log.w("DeviceAdminReceiver", "Device Admin Disabled")
     }
 
     override fun onPasswordFailed(context: Context, intent: Intent) {

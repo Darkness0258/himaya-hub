@@ -4,13 +4,20 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
+from pathlib import Path
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from models import Device, DeviceCreate, DeviceStatus, Event, EventType, RemoteAction
 
 app = FastAPI(title="Himaya Hub", version="0.1.0")
+
+STATIC_DIR = Path(__file__).parent / "static"
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 app.add_middleware(
     CORSMiddleware,
@@ -81,6 +88,22 @@ def device_went_dark(device_id: str) -> None:
         timestamp=current_time(),
     )
     emit(evt)
+
+
+@app.get("/")
+async def serve_dashboard_root():
+    index_file = STATIC_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+    return {"status": "ok", "message": "Himaya Hub active"}
+
+
+@app.get("/dashboard")
+async def serve_dashboard():
+    index_file = STATIC_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+    return {"status": "ok", "message": "Himaya Hub active"}
 
 
 @app.post("/devices", response_model=Device)

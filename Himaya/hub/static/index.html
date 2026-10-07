@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Himaya — Family Device Safety Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #080c14;
+      --bg-surface: #0f172a;
+      --bg-surface-elevated: rgba(30, 41, 59, 0.7);
+      --bg-glass: rgba(15, 23, 42, 0.65);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(16, 185, 129, 0.5);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-emerald: #10b981;
+      --accent-emerald-glow: rgba(16, 185, 129, 0.25);
+      --accent-cyan: #06b6d4;
+      --accent-amber: #f59e0b;
+      --accent-ruby: #ef4444;
+      --accent-ruby-glow: rgba(239, 68, 68, 0.3);
+      --font-main: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-primary);
+      font-family: var(--font-main);
+      min-height: 100vh;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 15% 10%, rgba(16, 185, 129, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(6, 182, 212, 0.06) 0%, transparent 45%),
+        radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.5) 0%, transparent 100%);
+      background-attachment: fixed;
+    }
+
+    /* Container */
+    .app-container {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 24px;
+      background: var(--bg-glass);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo-shield {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #059669, #10b981);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px var(--accent-emerald-glow);
+    }
+
+    .logo-shield svg {
+      width: 24px;
+      height: 24px;
+      color: white;
+    }
+
+    .brand-title h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffffff 40%, #a7f3d0);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-title p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-family: var(--font-mono);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+      font-weight: 500;
+      color: #34d399;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 10px var(--accent-emerald);
+      animation: pulse-ring 2s infinite;
+    }
+
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.3); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+
+    .status-pill.disconnected {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #f87171;
+    }
+    .status-pill.disconnected .status-dot {
+      background: var(--accent-ruby);
+      box-shadow: 0 0 10px var(--accent-ruby);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      font-family: var(--font-main);
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-emergency {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+    .btn-emergency:hover {
+      background: rgba(239, 68, 68, 0.25);
+      border-color: var(--accent-ruby);
+      color: #ffffff;
+      box-shadow: 0 0 15px var(--accent-ruby-glow);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #059669, #10b981);
+      color: white;
+      box-shadow: 0 4px 14px var(--accent-emerald-glow);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #10b981, #34d399);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-secondary {
+      background: var(--bg-surface-elevated);
+      border-color: var(--border-subtle);
+      color: var(--text-secondary);
+    }
+    .btn-secondary:hover {
+      background: rgba(51, 65, 85, 0.8);
+      color: var(--text-primary);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Stats Overview */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .metric-card {
+      background: var(--bg-glass);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .metric-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .metric-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+    }
+    .metric-icon.emerald { color: var(--accent-emerald); background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2); }
+    .metric-icon.cyan { color: var(--accent-cyan); background: rgba(6, 182, 212, 0.1); border-color: rgba(6, 182, 212, 0.2); }
+    .metric-icon.amber { color: var(--accent-amber); background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.2); }
+    .metric-icon.ruby { color: var(--accent-ruby); background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); }
+
+    .metric-info h3 {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .metric-info .value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      margin-top: 4px;
+      color: var(--text-primary);
+    }
+
+    /* Main Content Layout */
+    .dashboard-layout {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 24px;
+    }
+
+    @media (max-width: 1024px) {
+      .dashboard-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Section Headers */
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .section-header h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Device Cards Grid */
+    .device-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 18px;
+    }
+
+    .device-card {
+      background: var(--bg-glass);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.25s ease;
+    }
+
+    .device-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--accent-emerald);
+      opacity: 0.6;
+    }
+
+    .device-card.locked::before {
+      background: var(--accent-ruby);
+      opacity: 1;
+    }
+
+    .device-card.paused::before {
+      background: var(--accent-amber);
+      opacity: 1;
+    }
+
+    .device-card.offline::before {
+      background: var(--text-muted);
+      opacity: 0.3;
+    }
+
+    .device-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(255, 255, 255, 0.18);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .device-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .device-identity {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .device-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-cyan);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .device-name-box h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .device-tags {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 3px;
+    }
+
+    .tag {
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 500;
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+    }
+
+    .tag-child { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+    .tag-adult { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+    .tag-platform { background: rgba(255, 255, 255, 0.06); color: var(--text-secondary); }
+
+    .device-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 9999px;
+    }
+
+    .badge-online { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-locked { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+    .badge-paused { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-offline { background: rgba(100, 116, 139, 0.15); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.3); }
+
+    .device-meta-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+    }
+
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-muted);
+    }
+
+    .meta-row span:last-child {
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .loops-pillbox {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .loop-indicator {
+      font-size: 0.68rem;
+      font-family: var(--font-mono);
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .loop-indicator.active {
+      background: rgba(16, 185, 129, 0.1);
+      color: #34d399;
+      border-color: rgba(16, 185, 129, 0.25);
+    }
+
+    /* Device Action Buttons */
+    .device-action-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: auto;
+    }
+
+    .btn-action {
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      border: 1px solid var(--border-subtle);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-action:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-primary);
+    }
+
+    .btn-action.lock-btn:hover {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #f87171;
+    }
+
+    .btn-action.unlock-btn {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.4);
+      color: #34d399;
+    }
+
+    .btn-action.pause-btn:hover {
+      background: rgba(245, 158, 11, 0.15);
+      border-color: rgba(245, 158, 11, 0.4);
+      color: #fbbf24;
+    }
+
+    .btn-action.resume-btn {
+      background: rgba(245, 158, 11, 0.15);
+      border-color: rgba(245, 158, 11, 0.4);
+      color: #fbbf24;
+    }
+
+    /* Activity Stream Sidebar */
+    .activity-panel {
+      background: var(--bg-glass);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      height: 720px;
+    }
+
+    .activity-feed-controls {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .filter-chip {
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      border: 1px solid transparent;
+      cursor: pointer;
+    }
+
+    .filter-chip.active {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .event-stream-container {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-right: 4px;
+    }
+
+    .event-stream-container::-webkit-scrollbar {
+      width: 4px;
+    }
+    .event-stream-container::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+
+    .event-item {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      font-size: 0.82rem;
+      animation: slide-in 0.25s ease-out;
+    }
+
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .event-item.dns { border-left: 3px solid var(--accent-amber); }
+    .event-item.vpn { border-left: 3px solid var(--accent-ruby); background: rgba(239, 68, 68, 0.06); }
+    .event-item.lock { border-left: 3px solid var(--accent-ruby); }
+    .event-item.unlock { border-left: 3px solid var(--accent-emerald); }
+    .event-item.heartbeat { border-left: 3px solid var(--accent-cyan); opacity: 0.85; }
+
+    .event-badge-icon {
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    .event-body {
+      flex: 1;
+    }
+
+    .event-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2px;
+    }
+
+    .event-device {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .event-time {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .event-details {
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      word-break: break-all;
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      max-width: 480px;
+      width: 100%;
+      padding: 24px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      animation: modal-pop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes modal-pop {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .modal-header h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.25rem;
+      cursor: pointer;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-subtle);
+      color: white;
+      font-family: var(--font-main);
+      font-size: 0.9rem;
+      margin: 12px 0 20px;
+      outline: none;
+    }
+
+    .input-field:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 2px var(--accent-emerald-glow);
+    }
+
+    /* Simulator Panel */
+    .simulator-drawer {
+      margin-top: 24px;
+      padding: 18px 24px;
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px dashed rgba(255, 255, 255, 0.12);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+
+    .sim-info h4 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .sim-info p {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .sim-btn-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* Toast Notification */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .toast {
+      padding: 12px 18px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: white;
+      font-size: 0.85rem;
+      font-weight: 500;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      animation: slide-toast 0.25s ease-out;
+      pointer-events: auto;
+    }
+    @keyframes slide-toast {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header>
+      <div class="brand-group">
+        <div class="logo-shield">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        </div>
+        <div class="brand-title">
+          <h1>HIMAYA</h1>
+          <p>Family Device Safety Hub // Local-First MDM</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div id="connectionStatus" class="status-pill">
+          <span class="status-dot"></span>
+          <span id="connectionText">HUB ONLINE</span>
+        </div>
+        <button class="btn btn-secondary" onclick="openEnrollModal()">
+          <span>+ Enroll Device</span>
+        </button>
+        <button class="btn btn-emergency" onclick="emergencyLockAll()">
+          <span>🔒 Emergency Lock All</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Metrics Grid -->
+    <section class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-icon emerald">
+          <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+        </div>
+        <div class="metric-info">
+          <h3>Protected Devices</h3>
+          <div class="value" id="statDevicesCount">0</div>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon cyan">
+          <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <div class="metric-info">
+          <h3>Active Loops</h3>
+          <div class="value" id="statOnlineCount">0</div>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon amber">
+          <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+        </div>
+        <div class="metric-info">
+          <h3>DNS Blocks Logged</h3>
+          <div class="value" id="statDnsBlocks">0</div>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon ruby">
+          <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        </div>
+        <div class="metric-info">
+          <h3>VPN Bypass Alarms</h3>
+          <div class="value" id="statVpnAttempts">0</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content Grid -->
+    <div class="dashboard-layout">
+      <!-- Devices Column -->
+      <section>
+        <div class="section-header">
+          <h2>
+            <span>Fleet Safety Cockpit</span>
+          </h2>
+          <div class="loops-pillbox">
+            <span class="loop-indicator active">✓ VPN-Guard Active</span>
+            <span class="loop-indicator active">✓ AdGuard Sinkhole</span>
+            <span class="loop-indicator active">✓ Visible Notice Active</span>
+          </div>
+        </div>
+
+        <div id="deviceGrid" class="device-grid">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </section>
+
+      <!-- Live Activity Stream -->
+      <aside class="activity-panel">
+        <div class="section-header">
+          <h2>
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <span>Live Security Stream</span>
+          </h2>
+        </div>
+
+        <div class="activity-feed-controls">
+          <button class="filter-chip active" onclick="setEventFilter('all', this)">All</button>
+          <button class="filter-chip" onclick="setEventFilter('security', this)">Security</button>
+          <button class="filter-chip" onclick="setEventFilter('heartbeat', this)">Heartbeats</button>
+        </div>
+
+        <div id="eventStream" class="event-stream-container">
+          <!-- Live events populated here -->
+        </div>
+      </aside>
+    </div>
+
+    <!-- Simulator & Live Testing Drawer -->
+    <div class="simulator-drawer">
+      <div class="sim-info">
+        <h4>⚡ System Simulation & Test Harness</h4>
+        <p>Trigger live telemetry and simulated agent behavior to verify hub resilience and parent controls</p>
+      </div>
+      <div class="sim-btn-group">
+        <button class="btn btn-secondary" onclick="simulateHeartbeat()">💓 Pulse Heartbeat</button>
+        <button class="btn btn-secondary" onclick="simulateDnsBlock()">🛡️ Trigger DNS Block</button>
+        <button class="btn btn-secondary" onclick="simulateVpnEvasion()">🚨 Trigger VPN Breach</button>
+        <button class="btn btn-secondary" onclick="simulateDeviceWentDark()">🌑 Simulate Went Dark</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Push Message Modal -->
+  <div id="pushModal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="pushModalTitle">Push Message to Device</h3>
+        <button class="modal-close" onclick="closePushModal()">&times;</button>
+      </div>
+      <p style="font-size: 0.85rem; color: var(--text-secondary);">This message will immediately appear as an unmissable alert on the device screen.</p>
+      <input type="text" id="pushMessageInput" class="input-field" placeholder="e.g. Dinner is ready! Please save your homework." />
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button class="btn btn-secondary" onclick="closePushModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="sendPushMessage()">Send Alert</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enroll Device Modal -->
+  <div id="enrollModal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Enroll New Family Device</h3>
+        <button class="modal-close" onclick="closeEnrollModal()">&times;</button>
+      </div>
+      <label style="font-size: 0.8rem; color: var(--text-muted);">Device Name</label>
+      <input type="text" id="enrollName" class="input-field" placeholder="e.g. Maya's Galaxy Tab" />
+      
+      <label style="font-size: 0.8rem; color: var(--text-muted);">Platform</label>
+      <select id="enrollPlatform" class="input-field">
+        <option value="android">Android (Kotlin Agent)</option>
+        <option value="windows">Windows 11 / 10</option>
+      </select>
+
+      <label style="font-size: 0.8rem; color: var(--text-muted);">Profile Type</label>
+      <select id="enrollOwner" class="input-field">
+        <option value="child">Child (Full MDM Enforcement)</option>
+        <option value="adult">Adult (Consent-Based Filter)</option>
+      </select>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+        <button class="btn btn-secondary" onclick="closeEnrollModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitEnroll()">Enroll Device</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script>
+    // State management
+    let devices = [];
+    let events = [];
+    let currentFilter = 'all';
+    let targetDeviceIdForPush = null;
+    let ws = null;
+    let stats = {
+      dnsBlocks: 0,
+      vpnAttempts: 0
+    };
+
+    const host = window.location.host || '127.0.0.1:8000';
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const httpProtocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+    const WS_URL = `${wsProtocol}//${host}/ws`;
+    const API_BASE = `${httpProtocol}//${host}`;
+
+    // Initialize
+    window.addEventListener('DOMContentLoaded', () => {
+      fetchInitialData();
+      connectWebSocket();
+    });
+
+    async function fetchInitialData() {
+      try {
+        const [devRes, evtRes] = await Promise.all([
+          fetch(`${API_BASE}/devices`),
+          fetch(`${API_BASE}/events?limit=40`)
+        ]);
+        if (devRes.ok) devices = await devRes.json();
+        if (evtRes.ok) {
+          events = await evtRes.json();
+          // Count stats from existing events
+          events.forEach(e => {
+            if (e.type === 'dns_block') stats.dnsBlocks++;
+            if (e.type === 'vpn_attempt') stats.vpnAttempts++;
+          });
+        }
+        renderDevices();
+        renderEvents();
+        updateStats();
+      } catch (err) {
+        console.warn("Could not fetch initial data via REST:", err);
+      }
+    }
+
+    // WebSocket connection with auto-reconnect
+    function connectWebSocket() {
+      const connPill = document.getElementById('connectionStatus');
+      const connText = document.getElementById('connectionText');
+
+      ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => {
+        connPill.classList.remove('disconnected');
+        connText.textContent = 'HUB CONNECTED';
+        showToast("Connected to Himaya Hub live telemetry feed", "success");
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.type === 'snapshot') {
+            if (payload.devices) devices = payload.devices;
+            renderDevices();
+            updateStats();
+          } else {
+            handleLiveEvent(payload);
+          }
+        } catch (e) {
+          console.error("WS parse error:", e);
+        }
+      };
+
+      ws.onclose = () => {
+        connPill.classList.add('disconnected');
+        connText.textContent = 'HUB RECONNECTING...';
+        setTimeout(connectWebSocket, 3000);
+      };
+
+      ws.onerror = (err) => {
+        console.warn("WS error:", err);
+      };
+    }
+
+    function handleLiveEvent(evt) {
+      events.unshift(evt);
+      if (events.length > 100) events.pop();
+
+      if (evt.type === 'dns_block') stats.dnsBlocks++;
+      if (evt.type === 'vpn_attempt') {
+        stats.vpnAttempts++;
+        showToast(`🚨 Security Alert: Unauthorized VPN evasion attempt on ${evt.device_id}!`, 'error');
+      }
+
+      // Update in-memory device state
+      const targetDev = devices.find(d => d.device_id === evt.device_id);
+      if (targetDev) {
+        if (evt.type === 'heartbeat') {
+          targetDev.last_seen = evt.timestamp;
+          if (targetDev.status !== 'locked' && targetDev.status !== 'paused') {
+            targetDev.status = 'online';
+          }
+        } else if (evt.type === 'device_locked') {
+          targetDev.status = 'locked';
+        } else if (evt.type === 'device_unlocked') {
+          targetDev.status = 'online';
+        } else if (evt.type === 'device_went_dark') {
+          targetDev.status = 'offline';
+        }
+      }
+
+      renderDevices();
+      renderEvents();
+      updateStats();
+    }
+
+    function updateStats() {
+      document.getElementById('statDevicesCount').textContent = devices.length;
+      const onlineCount = devices.filter(d => d.status === 'online').length;
+      document.getElementById('statOnlineCount').textContent = onlineCount;
+      document.getElementById('statDnsBlocks').textContent = stats.dnsBlocks;
+      document.getElementById('statVpnAttempts').textContent = stats.vpnAttempts;
+    }
+
+    function renderDevices() {
+      const grid = document.getElementById('deviceGrid');
+      if (!devices || devices.length === 0) {
+        grid.innerHTML = `
+          <div style="grid-column: 1/-1; padding: 48px; text-align: center; background: var(--bg-glass); border-radius: var(--radius-md); border: 1px dashed var(--border-subtle);">
+            <p style="color: var(--text-muted); font-size: 1rem;">No managed devices enrolled yet.</p>
+            <button class="btn btn-primary" onclick="openEnrollModal()" style="margin-top: 14px;">+ Enroll First Device</button>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = devices.map(d => {
+        const isOnline = d.status === 'online';
+        const isLocked = d.status === 'locked';
+        const isPaused = d.status === 'paused';
+        const statusClass = isLocked ? 'locked' : isPaused ? 'paused' : isOnline ? 'online' : 'offline';
+        const badgeClass = `badge-${statusClass}`;
+        const lastSeenText = d.last_seen ? formatTimeAgo(d.last_seen) : 'Never seen';
+
+        return `
+          <div class="device-card ${statusClass}" id="card-${d.device_id}">
+            <div class="device-header">
+              <div class="device-identity">
+                <div class="device-avatar">
+                  ${d.platform === 'android' ? '📱' : '💻'}
+                </div>
+                <div class="device-name-box">
+                  <h3>${escapeHtml(d.name)}</h3>
+                  <div class="device-tags">
+                    <span class="tag tag-${d.owner_type || 'child'}">${d.owner_type || 'child'}</span>
+                    <span class="tag tag-platform">${d.platform.toUpperCase()}</span>
+                  </div>
+                </div>
+              </div>
+              <span class="device-status-badge ${badgeClass}">
+                ● ${d.status.toUpperCase()}
+              </span>
+            </div>
+
+            <div class="device-meta-rows">
+              <div class="meta-row">
+                <span>Device ID:</span>
+                <span>${escapeHtml(d.device_id)}</span>
+              </div>
+              <div class="meta-row">
+                <span>IP Address:</span>
+                <span>${d.ip || '10.0.0.x'}</span>
+              </div>
+              <div class="meta-row">
+                <span>Heartbeat:</span>
+                <span>${lastSeenText}</span>
+              </div>
+            </div>
+
+            <div class="loops-pillbox">
+              <span class="loop-indicator ${isOnline ? 'active' : ''}">VPN-Guard</span>
+              <span class="loop-indicator ${isOnline ? 'active' : ''}">DNS-Proxy</span>
+              <span class="loop-indicator ${isOnline ? 'active' : ''}">Policy-Sync</span>
+              <span class="loop-indicator ${isOnline ? 'active' : ''}">Snapshots</span>
+            </div>
+
+            <div class="device-action-bar">
+              ${isLocked ? `
+                <button class="btn-action unlock-btn" onclick="sendAction('${d.device_id}', 'unlock')">
+                  🔓 Unlock
+                </button>
+              ` : `
+                <button class="btn-action lock-btn" onclick="sendAction('${d.device_id}', 'lock')">
+                  🔒 Lock Screen
+                </button>
+              `}
+
+              ${isPaused ? `
+                <button class="btn-action resume-btn" onclick="sendAction('${d.device_id}', 'unpause')">
+                  ▶️ Resume Net
+                </button>
+              ` : `
+                <button class="btn-action pause-btn" onclick="sendAction('${d.device_id}', 'pause')">
+                  ⏸️ Pause Net
+                </button>
+              `}
+
+              <button class="btn-action" onclick="openPushModal('${d.device_id}', '${escapeHtml(d.name)}')">
+                💬 Push Alert
+              </button>
+              <button class="btn-action" onclick="confirmWipe('${d.device_id}', '${escapeHtml(d.name)}')">
+                ⚠️ Wipe
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderEvents() {
+      const container = document.getElementById('eventStream');
+      const filtered = events.filter(e => {
+        if (currentFilter === 'all') return true;
+        if (currentFilter === 'security') return e.type === 'vpn_attempt' || e.type === 'dns_block' || e.type === 'device_went_dark';
+        if (currentFilter === 'heartbeat') return e.type === 'heartbeat';
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 30px;">No events in this category yet.</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.slice(0, 30).map(e => {
+        let icon = '⚡';
+        let typeClass = '';
+        let detailText = '';
+
+        if (e.type === 'dns_block') {
+          icon = '🛡️';
+          typeClass = 'dns';
+          detailText = `Blocked Domain: ${e.data?.host || 'unknown'}`;
+        } else if (e.type === 'vpn_attempt') {
+          icon = '🚨';
+          typeClass = 'vpn';
+          detailText = `VPN Interface Breach: ${e.data?.interface || 'TUN0'}`;
+        } else if (e.type === 'device_locked') {
+          icon = '🔒';
+          typeClass = 'lock';
+          detailText = 'Device Screen Locked Remotely';
+        } else if (e.type === 'device_unlocked') {
+          icon = '🔓';
+          typeClass = 'unlock';
+          detailText = 'Device Screen Unlocked';
+        } else if (e.type === 'heartbeat') {
+          icon = '💓';
+          typeClass = 'heartbeat';
+          detailText = `Ping received from ${e.data?.ip || 'client'}`;
+        } else if (e.type === 'device_went_dark') {
+          icon = '🌑';
+          typeClass = 'vpn';
+          detailText = 'Device missed heartbeats — marked offline';
+        } else {
+          detailText = JSON.stringify(e.data || {});
+        }
+
+        const timeStr = formatEventTime(e.timestamp);
+
+        return `
+          <div class="event-item ${typeClass}">
+            <div class="event-badge-icon">${icon}</div>
+            <div class="event-body">
+              <div class="event-header">
+                <span class="event-device">${escapeHtml(e.device_id)}</span>
+                <span class="event-time">${timeStr}</span>
+              </div>
+              <div class="event-details">${escapeHtml(detailText)}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function setEventFilter(filter, el) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+      renderEvents();
+    }
+
+    // Action dispatchers
+    async function sendAction(deviceId, action, payload = {}) {
+      try {
+        const res = await fetch(`${API_BASE}/admin/${deviceId}/action`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, payload })
+        });
+        if (res.ok) {
+          showToast(`Action "${action}" dispatched to ${deviceId}`, "success");
+        } else {
+          showToast(`Failed to dispatch action: ${res.statusText}`, "error");
+        }
+      } catch (err) {
+        showToast(`Network error: ${err.message}`, "error");
+      }
+    }
+
+    function emergencyLockAll() {
+      if (!confirm("Are you sure you want to LOCK all child devices immediately?")) return;
+      devices.filter(d => d.owner_type === 'child').forEach(d => {
+        sendAction(d.device_id, 'lock', { reason: 'emergency_lock_all' });
+      });
+      showToast("Emergency lock dispatched to all child devices", "error");
+    }
+
+    function confirmWipe(deviceId, deviceName) {
+      const confirmWord = prompt(`DANGER: Remote wipe will factory-reset ${deviceName}.\nTo proceed, type "${deviceId}" exactly:`);
+      if (confirmWord === deviceId) {
+        sendAction(deviceId, 'wipe', { confirmed: true });
+        showToast(`Remote wipe command sent to ${deviceName}`, "error");
+      } else if (confirmWord !== null) {
+        alert("Confirmation code did not match. Wipe aborted.");
+      }
+    }
+
+    // Push alert modal
+    function openPushModal(deviceId, name) {
+      targetDeviceIdForPush = deviceId;
+      document.getElementById('pushModalTitle').textContent = `Push Alert to ${name}`;
+      document.getElementById('pushMessageInput').value = '';
+      document.getElementById('pushModal').classList.add('open');
+      document.getElementById('pushMessageInput').focus();
+    }
+
+    function closePushModal() {
+      document.getElementById('pushModal').classList.remove('open');
+      targetDeviceIdForPush = null;
+    }
+
+    function sendPushMessage() {
+      const msg = document.getElementById('pushMessageInput').value.trim();
+      if (!msg) return;
+      sendAction(targetDeviceIdForPush, 'push_notification', { message: msg });
+      closePushModal();
+    }
+
+    // Enroll modal
+    function openEnrollModal() {
+      document.getElementById('enrollModal').classList.add('open');
+      document.getElementById('enrollName').focus();
+    }
+
+    function closeEnrollModal() {
+      document.getElementById('enrollModal').classList.remove('open');
+    }
+
+    async function submitEnroll() {
+      const name = document.getElementById('enrollName').value.trim();
+      const platform = document.getElementById('enrollPlatform').value;
+      const owner_type = document.getElementById('enrollOwner').value;
+
+      if (!name) {
+        alert("Please enter a device name");
+        return;
+      }
+
+      const device_id = `${platform}-${Math.random().toString(36).substring(2, 7)}`;
+      try {
+        const res = await fetch(`${API_BASE}/devices`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, platform, device_id, owner_type })
+        });
+        if (res.ok) {
+          const newDev = await res.json();
+          devices.push(newDev);
+          renderDevices();
+          updateStats();
+          closeEnrollModal();
+          showToast(`Enrolled ${name} (${device_id}) successfully`, "success");
+        } else {
+          showToast("Failed to enroll device", "error");
+        }
+      } catch (err) {
+        showToast(`Error: ${err.message}`, "error");
+      }
+    }
+
+    // Simulation helpers
+    async function simulateHeartbeat() {
+      if (devices.length === 0) {
+        await submitMockDevice();
+      }
+      const dev = devices[0];
+      await fetch(`${API_BASE}/agents/${dev.device_id}/heartbeat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip: "192.168.1.105" })
+      });
+      showToast(`Heartbeat simulated from ${dev.name}`, "info");
+    }
+
+    async function simulateDnsBlock() {
+      if (devices.length === 0) await submitMockDevice();
+      const dev = devices[0];
+      const blockedHosts = ["ads.tiktok.com", "gambling-roulette.online", "tracker.doubleclick.net"];
+      const randomHost = blockedHosts[Math.floor(Math.random() * blockedHosts.length)];
+      await fetch(`${API_BASE}/agents/${dev.device_id}/dns-block`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ host: randomHost })
+      });
+      showToast(`DNS block simulated: ${randomHost}`, "warning");
+    }
+
+    async function simulateVpnEvasion() {
+      if (devices.length === 0) await submitMockDevice();
+      const dev = devices[0];
+      await fetch(`${API_BASE}/agents/${dev.device_id}/vpn-attempt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ interface: "TUN0_NORD_VPN" })
+      });
+    }
+
+    async function simulateDeviceWentDark() {
+      if (devices.length === 0) await submitMockDevice();
+      const dev = devices[0];
+      // Trigger dark event by mocking
+      handleLiveEvent({
+        device_id: dev.device_id,
+        type: 'device_went_dark',
+        data: { reason: "missed_3_heartbeats" },
+        timestamp: new Date().toISOString()
+      });
+      showToast(`Device ${dev.name} went dark (alert triggered)`, "error");
+    }
+
+    async function submitMockDevice() {
+      const res = await fetch(`${API_BASE}/devices`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: "Sarah's Pixel 7",
+          platform: "android",
+          device_id: "android-001",
+          owner_type: "child"
+        })
+      });
+      if (res.ok) {
+        const d = await res.json();
+        devices.push(d);
+      }
+    }
+
+    // Utilities
+    function formatTimeAgo(isoString) {
+      const diff = Math.floor((new Date() - new Date(isoString)) / 1000);
+      if (diff < 5) return 'Just now';
+      if (diff < 60) return `${diff}s ago`;
+      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+      return `${Math.floor(diff / 3600)}h ago`;
+    }
+
+    function formatEventTime(isoString) {
+      try {
+        const d = new Date(isoString);
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      } catch {
+        return '';
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      if (type === 'error') {
+        toast.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+        toast.style.background = '#1e1014';
+      } else if (type === 'success') {
+        toast.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+      }
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+  </script>
+</body>
+</html>

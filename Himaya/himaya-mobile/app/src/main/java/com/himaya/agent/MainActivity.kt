@@ -106,10 +106,7 @@ class MainActivity : AppCompatActivity() {
         PreferenceManager.putString(this, "device_id", deviceId)
 
         // Start agent service
-        val serviceIntent = Intent(this, AgentService::class.java)
-        serviceIntent.putExtra("hub_url", hubUrl)
-        serviceIntent.putExtra("device_id", deviceId)
-        startService(serviceIntent)
+        AgentService.start(this, hubUrl, deviceId)
 
         updateStatus()
         Toast.makeText(this, "Agent enabled", Toast.LENGTH_SHORT).show()

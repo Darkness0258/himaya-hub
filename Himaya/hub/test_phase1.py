@@ -4,15 +4,18 @@ import threading
 import requests
 import uvicorn
 
-BASE = "http://127.0.0.1:8000"
+BASE = "http://127.0.0.1:8004"
 
 
 def run_server():
     import main  # noqa: E402
-    uvicorn.run(main.app, host="0.0.0.0", port=8000, log_level="error")
+    uvicorn.run(main.app, host="127.0.0.1", port=8004, log_level="error")
 
 
 def test_phase1():
+    import database
+    database.clear_all_data()
+
     # Register two devices
     dev1 = requests.post(f"{BASE}/devices", json={"name": "Child Phone", "platform": "android",
                                                   "device_id": "android-001", "owner_type": "child"}).json()

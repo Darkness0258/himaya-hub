@@ -12,7 +12,7 @@
       --bg-base: #080c14;
       --bg-surface: #0f172a;
       --bg-surface-elevated: rgba(30, 41, 59, 0.7);
-      --bg-glass: rgba(15, 23, 42, 0.65);
+      --bg-glass: rgba(15, 23, 42, 0.75);
       --border-subtle: rgba(255, 255, 255, 0.08);
       --border-focus: rgba(16, 185, 129, 0.5);
       --text-primary: #f8fafc;
@@ -31,11 +31,7 @@
       --radius-lg: 20px;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       background-color: var(--bg-base);
@@ -44,20 +40,19 @@
       min-height: 100vh;
       overflow-x: hidden;
       background-image: 
-        radial-gradient(circle at 15% 10%, rgba(16, 185, 129, 0.08) 0%, transparent 40%),
-        radial-gradient(circle at 85% 85%, rgba(6, 182, 212, 0.06) 0%, transparent 45%),
+        radial-gradient(circle at 15% 10%, rgba(16, 185, 129, 0.09) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(6, 182, 212, 0.07) 0%, transparent 45%),
         radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.5) 0%, transparent 100%);
       background-attachment: fixed;
     }
 
-    /* Container */
     .app-container {
       max-width: 1440px;
       margin: 0 auto;
       padding: 24px;
       display: flex;
       flex-direction: column;
-      gap: 28px;
+      gap: 24px;
     }
 
     /* Header */
@@ -90,11 +85,7 @@
       box-shadow: 0 0 20px var(--accent-emerald-glow);
     }
 
-    .logo-shield svg {
-      width: 24px;
-      height: 24px;
-      color: white;
-    }
+    .logo-shield svg { width: 24px; height: 24px; color: white; }
 
     .brand-title h1 {
       font-size: 1.5rem;
@@ -116,7 +107,7 @@
     .header-actions {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
     }
 
     .status-pill {
@@ -158,6 +149,40 @@
       box-shadow: 0 0 10px var(--accent-ruby);
     }
 
+    /* Navigation Tabs */
+    .nav-tabs {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 8px;
+    }
+
+    .nav-tab-btn {
+      padding: 10px 18px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .nav-tab-btn:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .nav-tab-btn.active {
+      color: #ffffff;
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.35);
+    }
+
     .btn {
       display: inline-flex;
       align-items: center;
@@ -171,10 +196,7 @@
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       font-family: var(--font-main);
     }
-
-    .btn:active {
-      transform: scale(0.97);
-    }
+    .btn:active { transform: scale(0.97); }
 
     .btn-emergency {
       background: rgba(239, 68, 68, 0.15);
@@ -209,7 +231,7 @@
       border-color: rgba(255, 255, 255, 0.2);
     }
 
-    /* Stats Overview */
+    /* Metrics Grid */
     .metrics-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -268,11 +290,8 @@
       grid-template-columns: 1fr 380px;
       gap: 24px;
     }
-
     @media (max-width: 1024px) {
-      .dashboard-layout {
-        grid-template-columns: 1fr;
-      }
+      .dashboard-layout { grid-template-columns: 1fr; }
     }
 
     /* Section Headers */
@@ -282,11 +301,9 @@
       align-items: center;
       margin-bottom: 16px;
     }
-
     .section-header h2 {
       font-size: 1.25rem;
       font-weight: 700;
-      letter-spacing: -0.01em;
       display: flex;
       align-items: center;
       gap: 10px;
@@ -323,21 +340,9 @@
       background: var(--accent-emerald);
       opacity: 0.6;
     }
-
-    .device-card.locked::before {
-      background: var(--accent-ruby);
-      opacity: 1;
-    }
-
-    .device-card.paused::before {
-      background: var(--accent-amber);
-      opacity: 1;
-    }
-
-    .device-card.offline::before {
-      background: var(--text-muted);
-      opacity: 0.3;
-    }
+    .device-card.locked::before { background: var(--accent-ruby); opacity: 1; }
+    .device-card.paused::before { background: var(--accent-amber); opacity: 1; }
+    .device-card.offline::before { background: var(--text-muted); opacity: 0.3; }
 
     .device-card:hover {
       transform: translateY(-3px);
@@ -365,15 +370,11 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--accent-cyan);
+      font-size: 1.2rem;
       border: 1px solid var(--border-subtle);
     }
 
-    .device-name-box h3 {
-      font-size: 1.05rem;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
+    .device-name-box h3 { font-size: 1.05rem; font-weight: 600; color: var(--text-primary); }
 
     .device-tags {
       display: flex;
@@ -390,7 +391,6 @@
       text-transform: uppercase;
       font-family: var(--font-mono);
     }
-
     .tag-child { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
     .tag-adult { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
     .tag-platform { background: rgba(255, 255, 255, 0.06); color: var(--text-secondary); }
@@ -422,23 +422,10 @@
       font-family: var(--font-mono);
     }
 
-    .meta-row {
-      display: flex;
-      justify-content: space-between;
-      color: var(--text-muted);
-    }
+    .meta-row { display: flex; justify-content: space-between; color: var(--text-muted); }
+    .meta-row span:last-child { color: var(--text-secondary); font-weight: 500; }
 
-    .meta-row span:last-child {
-      color: var(--text-secondary);
-      font-weight: 500;
-    }
-
-    .loops-pillbox {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
+    .loops-pillbox { display: flex; gap: 6px; flex-wrap: wrap; }
     .loop-indicator {
       font-size: 0.68rem;
       font-family: var(--font-mono);
@@ -454,18 +441,17 @@
       border-color: rgba(16, 185, 129, 0.25);
     }
 
-    /* Device Action Buttons */
     .device-action-bar {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
       margin-top: auto;
     }
 
     .btn-action {
-      padding: 8px 10px;
+      padding: 7px 6px;
       border-radius: 6px;
-      font-size: 0.78rem;
+      font-size: 0.74rem;
       font-weight: 600;
       border: 1px solid var(--border-subtle);
       background: rgba(255, 255, 255, 0.03);
@@ -474,38 +460,17 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 4px;
       transition: all 0.15s ease;
     }
-
     .btn-action:hover {
       background: rgba(255, 255, 255, 0.08);
       color: var(--text-primary);
     }
-
-    .btn-action.lock-btn:hover {
-      background: rgba(239, 68, 68, 0.15);
-      border-color: rgba(239, 68, 68, 0.4);
-      color: #f87171;
-    }
-
-    .btn-action.unlock-btn {
-      background: rgba(16, 185, 129, 0.15);
-      border-color: rgba(16, 185, 129, 0.4);
-      color: #34d399;
-    }
-
-    .btn-action.pause-btn:hover {
-      background: rgba(245, 158, 11, 0.15);
-      border-color: rgba(245, 158, 11, 0.4);
-      color: #fbbf24;
-    }
-
-    .btn-action.resume-btn {
-      background: rgba(245, 158, 11, 0.15);
-      border-color: rgba(245, 158, 11, 0.4);
-      color: #fbbf24;
-    }
+    .btn-action.lock-btn:hover { background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.4); color: #f87171; }
+    .btn-action.unlock-btn { background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.4); color: #34d399; }
+    .btn-action.pause-btn:hover { background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.4); color: #fbbf24; }
+    .btn-action.resume-btn { background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.4); color: #fbbf24; }
 
     /* Activity Stream Sidebar */
     .activity-panel {
@@ -519,12 +484,7 @@
       height: 720px;
     }
 
-    .activity-feed-controls {
-      display: flex;
-      gap: 6px;
-      margin-bottom: 14px;
-    }
-
+    .activity-feed-controls { display: flex; gap: 6px; margin-bottom: 14px; }
     .filter-chip {
       font-size: 0.75rem;
       padding: 4px 10px;
@@ -534,7 +494,6 @@
       border: 1px solid transparent;
       cursor: pointer;
     }
-
     .filter-chip.active {
       background: rgba(16, 185, 129, 0.15);
       color: #34d399;
@@ -549,10 +508,7 @@
       gap: 10px;
       padding-right: 4px;
     }
-
-    .event-stream-container::-webkit-scrollbar {
-      width: 4px;
-    }
+    .event-stream-container::-webkit-scrollbar { width: 4px; }
     .event-stream-container::-webkit-scrollbar-thumb {
       background: rgba(255, 255, 255, 0.15);
       border-radius: 4px;
@@ -569,7 +525,6 @@
       font-size: 0.82rem;
       animation: slide-in 0.25s ease-out;
     }
-
     @keyframes slide-in {
       from { opacity: 0; transform: translateY(-8px); }
       to { opacity: 1; transform: translateY(0); }
@@ -580,57 +535,107 @@
     .event-item.lock { border-left: 3px solid var(--accent-ruby); }
     .event-item.unlock { border-left: 3px solid var(--accent-emerald); }
     .event-item.heartbeat { border-left: 3px solid var(--accent-cyan); opacity: 0.85; }
+    .event-item.screenshot { border-left: 3px solid #a855f7; }
 
-    .event-badge-icon {
-      font-size: 1rem;
-      line-height: 1;
+    .event-body { flex: 1; }
+    .event-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+    .event-device { font-weight: 600; color: var(--text-primary); }
+    .event-time { font-size: 0.7rem; color: var(--text-muted); font-family: var(--font-mono); }
+    .event-details { color: var(--text-secondary); font-family: var(--font-mono); font-size: 0.75rem; word-break: break-all; }
+
+    /* Snapshots Gallery View */
+    .snapshot-view-container {
+      display: none;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .snapshot-view-container.active { display: flex; }
+
+    .snapshot-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 18px;
     }
 
-    .event-body {
-      flex: 1;
+    .snapshot-card {
+      background: var(--bg-glass);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .snapshot-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(255, 255, 255, 0.2);
     }
 
-    .event-header {
+    .snapshot-thumb {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      background: #000;
+      display: block;
+    }
+
+    .snapshot-meta {
+      padding: 12px 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 2px;
+      font-size: 0.8rem;
     }
 
-    .event-device {
-      font-weight: 600;
-      color: var(--text-primary);
+    /* Rules View */
+    .rules-view-container {
+      display: none;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .rules-view-container.active { display: flex; }
+
+    .rules-box {
+      background: var(--bg-glass);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      max-width: 800px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
     }
 
-    .event-time {
-      font-size: 0.7rem;
-      color: var(--text-muted);
-      font-family: var(--font-mono);
+    .category-checkbox-group {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 10px;
     }
 
-    .event-details {
-      color: var(--text-secondary);
-      font-family: var(--font-mono);
-      font-size: 0.75rem;
-      word-break: break-all;
+    .category-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+      cursor: pointer;
     }
 
-    /* Modal */
+    /* Modals */
     .modal-backdrop {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.75);
+      background: rgba(0, 0, 0, 0.8);
       backdrop-filter: blur(8px);
       z-index: 100;
       align-items: center;
       justify-content: center;
       padding: 20px;
     }
-
-    .modal-backdrop.open {
-      display: flex;
-    }
+    .modal-backdrop.open { display: flex; }
 
     .modal-box {
       background: var(--bg-surface);
@@ -640,33 +645,9 @@
       width: 100%;
       padding: 24px;
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-      animation: modal-pop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
-
-    @keyframes modal-pop {
-      from { opacity: 0; transform: scale(0.95); }
-      to { opacity: 1; transform: scale(1); }
-    }
-
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-    }
-
-    .modal-header h3 {
-      font-size: 1.15rem;
-      font-weight: 700;
-    }
-
-    .modal-close {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      font-size: 1.25rem;
-      cursor: pointer;
-    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .modal-close { background: none; border: none; color: var(--text-muted); font-size: 1.25rem; cursor: pointer; }
 
     .input-field {
       width: 100%;
@@ -677,18 +658,13 @@
       color: white;
       font-family: var(--font-main);
       font-size: 0.9rem;
-      margin: 12px 0 20px;
+      margin: 10px 0 16px;
       outline: none;
     }
+    .input-field:focus { border-color: var(--border-focus); }
 
-    .input-field:focus {
-      border-color: var(--border-focus);
-      box-shadow: 0 0 0 2px var(--accent-emerald-glow);
-    }
-
-    /* Simulator Panel */
+    /* Simulator */
     .simulator-drawer {
-      margin-top: 24px;
       padding: 18px 24px;
       background: rgba(15, 23, 42, 0.4);
       border: 1px dashed rgba(255, 255, 255, 0.12);
@@ -700,23 +676,6 @@
       gap: 14px;
     }
 
-    .sim-info h4 {
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-    .sim-info p {
-      font-size: 0.78rem;
-      color: var(--text-muted);
-    }
-
-    .sim-btn-group {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    /* Toast Notification */
     .toast-container {
       position: fixed;
       bottom: 24px;
@@ -727,7 +686,6 @@
       gap: 10px;
       pointer-events: none;
     }
-
     .toast {
       padding: 12px 18px;
       background: var(--bg-surface);
@@ -737,12 +695,7 @@
       font-size: 0.85rem;
       font-weight: 500;
       box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-      animation: slide-toast 0.25s ease-out;
       pointer-events: auto;
-    }
-    @keyframes slide-toast {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
     }
   </style>
 </head>
@@ -758,7 +711,7 @@
         </div>
         <div class="brand-title">
           <h1>HIMAYA</h1>
-          <p>Family Device Safety Hub // Local-First MDM</p>
+          <p>Family Device Safety Hub // Production Hub</p>
         </div>
       </div>
 
@@ -771,100 +724,181 @@
           <span>+ Enroll Device</span>
         </button>
         <button class="btn btn-emergency" onclick="emergencyLockAll()">
-          <span>🔒 Emergency Lock All</span>
+          <span>🔒 Lock All Children</span>
         </button>
       </div>
     </header>
 
-    <!-- Metrics Grid -->
-    <section class="metrics-grid">
-      <div class="metric-card">
-        <div class="metric-icon emerald">
-          <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-        </div>
-        <div class="metric-info">
-          <h3>Protected Devices</h3>
-          <div class="value" id="statDevicesCount">0</div>
-        </div>
-      </div>
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="nav-tab-btn active" onclick="switchTab('fleet', this)">
+        <span>🛡️ Fleet Overview</span>
+      </button>
+      <button class="nav-tab-btn" onclick="switchTab('snapshots', this)">
+        <span>📸 Screen Timeline</span>
+      </button>
+      <button class="nav-tab-btn" onclick="switchTab('rules', this)">
+        <span>⚙️ Filter Rules & Curfews</span>
+      </button>
+    </nav>
 
-      <div class="metric-card">
-        <div class="metric-icon cyan">
-          <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-        </div>
-        <div class="metric-info">
-          <h3>Active Loops</h3>
-          <div class="value" id="statOnlineCount">0</div>
-        </div>
-      </div>
-
-      <div class="metric-card">
-        <div class="metric-icon amber">
-          <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
-        </div>
-        <div class="metric-info">
-          <h3>DNS Blocks Logged</h3>
-          <div class="value" id="statDnsBlocks">0</div>
-        </div>
-      </div>
-
-      <div class="metric-card">
-        <div class="metric-icon ruby">
-          <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-        </div>
-        <div class="metric-info">
-          <h3>VPN Bypass Alarms</h3>
-          <div class="value" id="statVpnAttempts">0</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Main Content Grid -->
-    <div class="dashboard-layout">
-      <!-- Devices Column -->
-      <section>
-        <div class="section-header">
-          <h2>
-            <span>Fleet Safety Cockpit</span>
-          </h2>
-          <div class="loops-pillbox">
-            <span class="loop-indicator active">✓ VPN-Guard Active</span>
-            <span class="loop-indicator active">✓ AdGuard Sinkhole</span>
-            <span class="loop-indicator active">✓ Visible Notice Active</span>
+    <!-- TAB 1: FLEET OVERVIEW -->
+    <main id="tabFleet">
+      <!-- Metrics Grid -->
+      <section class="metrics-grid" style="margin-bottom: 24px;">
+        <div class="metric-card">
+          <div class="metric-icon emerald">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+          </div>
+          <div class="metric-info">
+            <h3>Enrolled Devices</h3>
+            <div class="value" id="statDevicesCount">0</div>
           </div>
         </div>
 
-        <div id="deviceGrid" class="device-grid">
-          <!-- Populated dynamically via JS -->
+        <div class="metric-card">
+          <div class="metric-icon cyan">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <div class="metric-info">
+            <h3>Active Protection</h3>
+            <div class="value" id="statOnlineCount">0</div>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon amber">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+          </div>
+          <div class="metric-info">
+            <h3>DNS Blocks Logged</h3>
+            <div class="value" id="statDnsBlocks">0</div>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon ruby">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          </div>
+          <div class="metric-info">
+            <h3>VPN Bypass Alarms</h3>
+            <div class="value" id="statVpnAttempts">0</div>
+          </div>
         </div>
       </section>
 
-      <!-- Live Activity Stream -->
-      <aside class="activity-panel">
-        <div class="section-header">
-          <h2>
-            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-            <span>Live Security Stream</span>
-          </h2>
+      <!-- Main Fleet Layout -->
+      <div class="dashboard-layout">
+        <section>
+          <div class="section-header">
+            <h2><span>Device Safety Cockpit</span></h2>
+            <div class="loops-pillbox">
+              <span class="loop-indicator active">✓ SQLite Persistent</span>
+              <span class="loop-indicator active">✓ DNS Sinkhole Active</span>
+              <span class="loop-indicator active">✓ Watchdog 45s</span>
+            </div>
+          </div>
+          <div id="deviceGrid" class="device-grid"></div>
+        </section>
+
+        <!-- Live Activity Stream -->
+        <aside class="activity-panel">
+          <div class="section-header">
+            <h2>
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              <span>Live Security Stream</span>
+            </h2>
+          </div>
+
+          <div class="activity-feed-controls">
+            <button class="filter-chip active" onclick="setEventFilter('all', this)">All</button>
+            <button class="filter-chip" onclick="setEventFilter('security', this)">Security</button>
+            <button class="filter-chip" onclick="setEventFilter('heartbeat', this)">Heartbeats</button>
+          </div>
+
+          <div id="eventStream" class="event-stream-container"></div>
+        </aside>
+      </div>
+    </main>
+
+    <!-- TAB 2: SCREEN TIMELINE GALLERY -->
+    <section id="tabSnapshots" class="snapshot-view-container">
+      <div class="section-header">
+        <h2><span>Scheduled Screen Timeline & Snapshots</span></h2>
+        <button class="btn btn-secondary" onclick="loadSnapshots()">🔄 Refresh Timeline</button>
+      </div>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: -10px; margin-bottom: 10px;">
+        Screenshots captured during active usage via MediaProjection / Windows GDI. Notice is visibly shown on the device.
+      </p>
+      <div id="snapshotGrid" class="snapshot-grid">
+        <div style="color: var(--text-muted);">Loading snapshots...</div>
+      </div>
+    </section>
+
+    <!-- TAB 3: CONTENT RULES & CURFEWS -->
+    <section id="tabRules" class="rules-view-container">
+      <div class="section-header">
+        <h2><span>Global & Device Content Safety Rules</span></h2>
+      </div>
+
+      <div class="rules-box">
+        <div>
+          <h3>1. Filter Categories</h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Enforced at DNS and agent level across household</p>
+          <div class="category-checkbox-group">
+            <label class="category-label">
+              <input type="checkbox" id="catAdult" checked />
+              <span>Adult & Explicit Content</span>
+            </label>
+            <label class="category-label">
+              <input type="checkbox" id="catGambling" checked />
+              <span>Gambling & Betting</span>
+            </label>
+            <label class="category-label">
+              <input type="checkbox" id="catSocial" checked />
+              <span>Social Media (TikTok, Kick)</span>
+            </label>
+            <label class="category-label">
+              <input type="checkbox" id="catGaming" />
+              <span>Online Gaming & Roblox</span>
+            </label>
+          </div>
         </div>
 
-        <div class="activity-feed-controls">
-          <button class="filter-chip active" onclick="setEventFilter('all', this)">All</button>
-          <button class="filter-chip" onclick="setEventFilter('security', this)">Security</button>
-          <button class="filter-chip" onclick="setEventFilter('heartbeat', this)">Heartbeats</button>
+        <div>
+          <h3>2. Custom Blocked Domains</h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">One domain per line</p>
+          <textarea id="customBlockedDomains" class="input-field" rows="4" style="resize: vertical;">tiktok.com&#10;kick.com&#10;omegle.com</textarea>
         </div>
 
-        <div id="eventStream" class="event-stream-container">
-          <!-- Live events populated here -->
+        <div>
+          <h3>3. Bedtime & Night Curfew</h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Automatically locks child screens during sleep hours</p>
+          <div style="display: flex; gap: 16px; margin-top: 10px; align-items: center;">
+            <label style="display: flex; align-items: center; gap: 8px;">
+              <input type="checkbox" id="bedtimeEnabled" checked />
+              <span>Enable Curfew</span>
+            </label>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 0.85rem; color: var(--text-muted);">From:</span>
+              <input type="time" id="bedtimeStart" class="input-field" style="margin: 0; width: auto;" value="21:30" />
+              <span style="font-size: 0.85rem; color: var(--text-muted);">To:</span>
+              <input type="time" id="bedtimeEnd" class="input-field" style="margin: 0; width: auto;" value="07:00" />
+            </div>
+          </div>
         </div>
-      </aside>
-    </div>
 
-    <!-- Simulator & Live Testing Drawer -->
+        <button class="btn btn-primary" onclick="saveRulesConfig()" style="align-self: flex-start; padding: 12px 24px;">
+          Save & Synchronize All Policies
+        </button>
+      </div>
+    </section>
+
+    <!-- Simulator Drawer -->
     <div class="simulator-drawer">
       <div class="sim-info">
-        <h4>⚡ System Simulation & Test Harness</h4>
-        <p>Trigger live telemetry and simulated agent behavior to verify hub resilience and parent controls</p>
+        <h4>⚡ Simulation & Live Verification Harness</h4>
+        <p>Trigger telemetry, DNS sinkhole drops, or mock snapshots directly from this browser console</p>
       </div>
       <div class="sim-btn-group">
         <button class="btn btn-secondary" onclick="simulateHeartbeat()">💓 Pulse Heartbeat</button>
@@ -899,12 +933,12 @@
         <button class="modal-close" onclick="closeEnrollModal()">&times;</button>
       </div>
       <label style="font-size: 0.8rem; color: var(--text-muted);">Device Name</label>
-      <input type="text" id="enrollName" class="input-field" placeholder="e.g. Maya's Galaxy Tab" />
+      <input type="text" id="enrollName" class="input-field" placeholder="e.g. Sarah's Pixel / Windows PC" />
       
       <label style="font-size: 0.8rem; color: var(--text-muted);">Platform</label>
       <select id="enrollPlatform" class="input-field">
         <option value="android">Android (Kotlin Agent)</option>
-        <option value="windows">Windows 11 / 10</option>
+        <option value="windows">Windows 11 / 10 (Background Service)</option>
       </select>
 
       <label style="font-size: 0.8rem; color: var(--text-muted);">Profile Type</label>
@@ -920,20 +954,25 @@
     </div>
   </div>
 
+  <!-- Snapshot Lightbox Modal -->
+  <div id="lightboxModal" class="modal-backdrop" onclick="this.classList.remove('open')">
+    <div style="max-width: 90vw; max-height: 90vh; display: flex; flex-direction: column; align-items: center;" onclick="event.stopPropagation()">
+      <img id="lightboxImg" src="" style="max-width: 85vw; max-height: 80vh; border-radius: 12px; border: 1px solid var(--border-subtle); box-shadow: 0 20px 50px rgba(0,0,0,0.8);" />
+      <div id="lightboxMeta" style="margin-top: 12px; font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-secondary);"></div>
+    </div>
+  </div>
+
   <!-- Toast Container -->
   <div id="toastContainer" class="toast-container"></div>
 
   <script>
-    // State management
     let devices = [];
     let events = [];
+    let snapshots = [];
     let currentFilter = 'all';
     let targetDeviceIdForPush = null;
     let ws = null;
-    let stats = {
-      dnsBlocks: 0,
-      vpnAttempts: 0
-    };
+    let stats = { dnsBlocks: 0, vpnAttempts: 0 };
 
     const host = window.location.host || '127.0.0.1:8000';
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -941,11 +980,21 @@
     const WS_URL = `${wsProtocol}//${host}/ws`;
     const API_BASE = `${httpProtocol}//${host}`;
 
-    // Initialize
     window.addEventListener('DOMContentLoaded', () => {
       fetchInitialData();
       connectWebSocket();
     });
+
+    function switchTab(tabId, el) {
+      document.querySelectorAll('.nav-tab-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+
+      document.getElementById('tabFleet').style.display = tabId === 'fleet' ? 'block' : 'none';
+      document.getElementById('tabSnapshots').classList.toggle('active', tabId === 'snapshots');
+      document.getElementById('tabRules').classList.toggle('active', tabId === 'rules');
+
+      if (tabId === 'snapshots') loadSnapshots();
+    }
 
     async function fetchInitialData() {
       try {
@@ -956,7 +1005,6 @@
         if (devRes.ok) devices = await devRes.json();
         if (evtRes.ok) {
           events = await evtRes.json();
-          // Count stats from existing events
           events.forEach(e => {
             if (e.type === 'dns_block') stats.dnsBlocks++;
             if (e.type === 'vpn_attempt') stats.vpnAttempts++;
@@ -966,11 +1014,10 @@
         renderEvents();
         updateStats();
       } catch (err) {
-        console.warn("Could not fetch initial data via REST:", err);
+        console.warn("REST load error:", err);
       }
     }
 
-    // WebSocket connection with auto-reconnect
     function connectWebSocket() {
       const connPill = document.getElementById('connectionStatus');
       const connText = document.getElementById('connectionText');
@@ -980,7 +1027,7 @@
       ws.onopen = () => {
         connPill.classList.remove('disconnected');
         connText.textContent = 'HUB CONNECTED';
-        showToast("Connected to Himaya Hub live telemetry feed", "success");
+        showToast("Connected to Himaya Hub persistent stream", "success");
       };
 
       ws.onmessage = (event) => {
@@ -1003,10 +1050,6 @@
         connText.textContent = 'HUB RECONNECTING...';
         setTimeout(connectWebSocket, 3000);
       };
-
-      ws.onerror = (err) => {
-        console.warn("WS error:", err);
-      };
     }
 
     function handleLiveEvent(evt) {
@@ -1016,10 +1059,13 @@
       if (evt.type === 'dns_block') stats.dnsBlocks++;
       if (evt.type === 'vpn_attempt') {
         stats.vpnAttempts++;
-        showToast(`🚨 Security Alert: Unauthorized VPN evasion attempt on ${evt.device_id}!`, 'error');
+        showToast(`🚨 Security Alert: VPN evasion on ${evt.device_id}!`, 'error');
+      }
+      if (evt.type === 'screenshot') {
+        showToast(`📸 New screen snapshot received from ${evt.device_id}`, 'info');
+        loadSnapshots();
       }
 
-      // Update in-memory device state
       const targetDev = devices.find(d => d.device_id === evt.device_id);
       if (targetDev) {
         if (evt.type === 'heartbeat') {
@@ -1027,13 +1073,9 @@
           if (targetDev.status !== 'locked' && targetDev.status !== 'paused') {
             targetDev.status = 'online';
           }
-        } else if (evt.type === 'device_locked') {
-          targetDev.status = 'locked';
-        } else if (evt.type === 'device_unlocked') {
-          targetDev.status = 'online';
-        } else if (evt.type === 'device_went_dark') {
-          targetDev.status = 'offline';
-        }
+        } else if (evt.type === 'device_locked') targetDev.status = 'locked';
+        else if (evt.type === 'device_unlocked') targetDev.status = 'online';
+        else if (evt.type === 'device_went_dark') targetDev.status = 'offline';
       }
 
       renderDevices();
@@ -1073,71 +1115,44 @@
           <div class="device-card ${statusClass}" id="card-${d.device_id}">
             <div class="device-header">
               <div class="device-identity">
-                <div class="device-avatar">
-                  ${d.platform === 'android' ? '📱' : '💻'}
-                </div>
+                <div class="device-avatar">${d.platform === 'android' ? '📱' : '💻'}</div>
                 <div class="device-name-box">
                   <h3>${escapeHtml(d.name)}</h3>
                   <div class="device-tags">
                     <span class="tag tag-${d.owner_type || 'child'}">${d.owner_type || 'child'}</span>
-                    <span class="tag tag-platform">${d.platform.toUpperCase()}</span>
+                    <span class="tag tag-platform">${(d.platform || 'ANDROID').toUpperCase()}</span>
                   </div>
                 </div>
               </div>
-              <span class="device-status-badge ${badgeClass}">
-                ● ${d.status.toUpperCase()}
-              </span>
+              <span class="device-status-badge ${badgeClass}">● ${d.status.toUpperCase()}</span>
             </div>
 
             <div class="device-meta-rows">
-              <div class="meta-row">
-                <span>Device ID:</span>
-                <span>${escapeHtml(d.device_id)}</span>
-              </div>
-              <div class="meta-row">
-                <span>IP Address:</span>
-                <span>${d.ip || '10.0.0.x'}</span>
-              </div>
-              <div class="meta-row">
-                <span>Heartbeat:</span>
-                <span>${lastSeenText}</span>
-              </div>
+              <div class="meta-row"><span>Device ID:</span><span>${escapeHtml(d.device_id)}</span></div>
+              <div class="meta-row"><span>IP Address:</span><span>${d.ip || '192.168.1.x'}</span></div>
+              <div class="meta-row"><span>Last Seen:</span><span>${lastSeenText}</span></div>
             </div>
 
             <div class="loops-pillbox">
               <span class="loop-indicator ${isOnline ? 'active' : ''}">VPN-Guard</span>
-              <span class="loop-indicator ${isOnline ? 'active' : ''}">DNS-Proxy</span>
-              <span class="loop-indicator ${isOnline ? 'active' : ''}">Policy-Sync</span>
+              <span class="loop-indicator ${isOnline ? 'active' : ''}">DNS-Sinkhole</span>
               <span class="loop-indicator ${isOnline ? 'active' : ''}">Snapshots</span>
             </div>
 
             <div class="device-action-bar">
               ${isLocked ? `
-                <button class="btn-action unlock-btn" onclick="sendAction('${d.device_id}', 'unlock')">
-                  🔓 Unlock
-                </button>
+                <button class="btn-action unlock-btn" onclick="sendAction('${d.device_id}', 'unlock')">🔓 Unlock</button>
               ` : `
-                <button class="btn-action lock-btn" onclick="sendAction('${d.device_id}', 'lock')">
-                  🔒 Lock Screen
-                </button>
+                <button class="btn-action lock-btn" onclick="sendAction('${d.device_id}', 'lock')">🔒 Lock</button>
               `}
 
               ${isPaused ? `
-                <button class="btn-action resume-btn" onclick="sendAction('${d.device_id}', 'unpause')">
-                  ▶️ Resume Net
-                </button>
+                <button class="btn-action resume-btn" onclick="sendAction('${d.device_id}', 'unpause')">▶️ Resume</button>
               ` : `
-                <button class="btn-action pause-btn" onclick="sendAction('${d.device_id}', 'pause')">
-                  ⏸️ Pause Net
-                </button>
+                <button class="btn-action pause-btn" onclick="sendAction('${d.device_id}', 'pause')">⏸️ Pause Net</button>
               `}
 
-              <button class="btn-action" onclick="openPushModal('${d.device_id}', '${escapeHtml(d.name)}')">
-                💬 Push Alert
-              </button>
-              <button class="btn-action" onclick="confirmWipe('${d.device_id}', '${escapeHtml(d.name)}')">
-                ⚠️ Wipe
-              </button>
+              <button class="btn-action" onclick="openPushModal('${d.device_id}', '${escapeHtml(d.name)}')">💬 Alert</button>
             </div>
           </div>
         `;
@@ -1158,7 +1173,7 @@
         return;
       }
 
-      container.innerHTML = filtered.slice(0, 30).map(e => {
+      container.innerHTML = filtered.slice(0, 35).map(e => {
         let icon = '⚡';
         let typeClass = '';
         let detailText = '';
@@ -1166,40 +1181,42 @@
         if (e.type === 'dns_block') {
           icon = '🛡️';
           typeClass = 'dns';
-          detailText = `Blocked Domain: ${e.data?.host || 'unknown'}`;
+          detailText = `Sinkholed: ${e.data?.host || 'domain'}`;
         } else if (e.type === 'vpn_attempt') {
           icon = '🚨';
           typeClass = 'vpn';
-          detailText = `VPN Interface Breach: ${e.data?.interface || 'TUN0'}`;
+          detailText = `VPN Bypass Detected: ${e.data?.interface || 'TUN0'}`;
         } else if (e.type === 'device_locked') {
           icon = '🔒';
           typeClass = 'lock';
-          detailText = 'Device Screen Locked Remotely';
+          detailText = 'Screen Locked by Parent';
         } else if (e.type === 'device_unlocked') {
           icon = '🔓';
           typeClass = 'unlock';
-          detailText = 'Device Screen Unlocked';
+          detailText = 'Screen Unlocked';
         } else if (e.type === 'heartbeat') {
           icon = '💓';
           typeClass = 'heartbeat';
-          detailText = `Ping received from ${e.data?.ip || 'client'}`;
+          detailText = `Heartbeat active (${e.data?.ip || 'LAN'})`;
+        } else if (e.type === 'screenshot') {
+          icon = '📸';
+          typeClass = 'screenshot';
+          detailText = 'Screen snapshot uploaded';
         } else if (e.type === 'device_went_dark') {
           icon = '🌑';
           typeClass = 'vpn';
-          detailText = 'Device missed heartbeats — marked offline';
+          detailText = 'Device missed 45s heartbeat window';
         } else {
           detailText = JSON.stringify(e.data || {});
         }
 
-        const timeStr = formatEventTime(e.timestamp);
-
         return `
           <div class="event-item ${typeClass}">
-            <div class="event-badge-icon">${icon}</div>
+            <div style="font-size: 1rem;">${icon}</div>
             <div class="event-body">
               <div class="event-header">
                 <span class="event-device">${escapeHtml(e.device_id)}</span>
-                <span class="event-time">${timeStr}</span>
+                <span class="event-time">${formatEventTime(e.timestamp)}</span>
               </div>
               <div class="event-details">${escapeHtml(detailText)}</div>
             </div>
@@ -1215,7 +1232,65 @@
       renderEvents();
     }
 
-    // Action dispatchers
+    async function loadSnapshots() {
+      const grid = document.getElementById('snapshotGrid');
+      try {
+        const res = await fetch(`${API_BASE}/snapshots`);
+        if (res.ok) {
+          snapshots = await res.json();
+          if (snapshots.length === 0) {
+            grid.innerHTML = `<div style="grid-column: 1/-1; padding: 40px; text-align: center; color: var(--text-muted);">No snapshots recorded yet. When agents are running, scheduled screen frames appear here.</div>`;
+            return;
+          }
+          grid.innerHTML = snapshots.map(s => `
+            <div class="snapshot-card" onclick="openLightbox('${s.url}', '${s.device_id}', '${s.timestamp}')">
+              <img src="${s.url}" class="snapshot-thumb" alt="Screen" loading="lazy" />
+              <div class="snapshot-meta">
+                <span style="font-weight: 600;">${escapeHtml(s.device_id)}</span>
+                <span style="color: var(--text-muted); font-family: var(--font-mono);">${formatEventTime(s.timestamp)}</span>
+              </div>
+            </div>
+          `).join('');
+        }
+      } catch (e) {
+        grid.innerHTML = `<div style="color: var(--accent-ruby);">Failed to load snapshots: ${e.message}</div>`;
+      }
+    }
+
+    function openLightbox(url, deviceId, timestamp) {
+      document.getElementById('lightboxImg').src = url;
+      document.getElementById('lightboxMeta').textContent = `Device: ${deviceId} | Captured: ${new Date(timestamp).toLocaleString()}`;
+      document.getElementById('lightboxModal').classList.add('open');
+    }
+
+    async function saveRulesConfig() {
+      const blockedCats = [];
+      if (document.getElementById('catAdult').checked) blockedCats.push('adult');
+      if (document.getElementById('catGambling').checked) blockedCats.push('gambling');
+      if (document.getElementById('catSocial').checked) blockedCats.push('social');
+      if (document.getElementById('catGaming').checked) blockedCats.push('gaming');
+
+      const rawDomains = document.getElementById('customBlockedDomains').value.split('\n').map(d => d.trim()).filter(Boolean);
+
+      const rulesPayload = {
+        blocked_categories: blockedCats,
+        blocked_domains: rawDomains,
+        bedtime_enabled: document.getElementById('bedtimeEnabled').checked,
+        bedtime_start: document.getElementById('bedtimeStart').value,
+        bedtime_end: document.getElementById('bedtimeEnd').value
+      };
+
+      for (const dev of devices) {
+        await fetch(`${API_BASE}/rules/${dev.device_id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(rulesPayload)
+        });
+      }
+
+      showToast("Rules synchronized and persisted to all devices", "success");
+    }
+
     async function sendAction(deviceId, action, payload = {}) {
       try {
         const res = await fetch(`${API_BASE}/admin/${deviceId}/action`, {
@@ -1224,9 +1299,9 @@
           body: JSON.stringify({ action, payload })
         });
         if (res.ok) {
-          showToast(`Action "${action}" dispatched to ${deviceId}`, "success");
+          showToast(`Dispatched: ${action} to ${deviceId}`, "success");
         } else {
-          showToast(`Failed to dispatch action: ${res.statusText}`, "error");
+          showToast(`Error: ${res.statusText}`, "error");
         }
       } catch (err) {
         showToast(`Network error: ${err.message}`, "error");
@@ -1241,17 +1316,6 @@
       showToast("Emergency lock dispatched to all child devices", "error");
     }
 
-    function confirmWipe(deviceId, deviceName) {
-      const confirmWord = prompt(`DANGER: Remote wipe will factory-reset ${deviceName}.\nTo proceed, type "${deviceId}" exactly:`);
-      if (confirmWord === deviceId) {
-        sendAction(deviceId, 'wipe', { confirmed: true });
-        showToast(`Remote wipe command sent to ${deviceName}`, "error");
-      } else if (confirmWord !== null) {
-        alert("Confirmation code did not match. Wipe aborted.");
-      }
-    }
-
-    // Push alert modal
     function openPushModal(deviceId, name) {
       targetDeviceIdForPush = deviceId;
       document.getElementById('pushModalTitle').textContent = `Push Alert to ${name}`;
@@ -1272,7 +1336,6 @@
       closePushModal();
     }
 
-    // Enroll modal
     function openEnrollModal() {
       document.getElementById('enrollModal').classList.add('open');
       document.getElementById('enrollName').focus();
@@ -1306,19 +1369,14 @@
           updateStats();
           closeEnrollModal();
           showToast(`Enrolled ${name} (${device_id}) successfully`, "success");
-        } else {
-          showToast("Failed to enroll device", "error");
         }
       } catch (err) {
         showToast(`Error: ${err.message}`, "error");
       }
     }
 
-    // Simulation helpers
     async function simulateHeartbeat() {
-      if (devices.length === 0) {
-        await submitMockDevice();
-      }
+      if (devices.length === 0) await submitMockDevice();
       const dev = devices[0];
       await fetch(`${API_BASE}/agents/${dev.device_id}/heartbeat`, {
         method: 'POST',
@@ -1331,7 +1389,7 @@
     async function simulateDnsBlock() {
       if (devices.length === 0) await submitMockDevice();
       const dev = devices[0];
-      const blockedHosts = ["ads.tiktok.com", "gambling-roulette.online", "tracker.doubleclick.net"];
+      const blockedHosts = ["tiktok.com", "pornhub.com", "gambling.com"];
       const randomHost = blockedHosts[Math.floor(Math.random() * blockedHosts.length)];
       await fetch(`${API_BASE}/agents/${dev.device_id}/dns-block`, {
         method: 'POST',
@@ -1347,21 +1405,20 @@
       await fetch(`${API_BASE}/agents/${dev.device_id}/vpn-attempt`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ interface: "TUN0_NORD_VPN" })
+        body: JSON.stringify({ interface: "TUN0_EXTERNAL_VPN" })
       });
     }
 
     async function simulateDeviceWentDark() {
       if (devices.length === 0) await submitMockDevice();
       const dev = devices[0];
-      // Trigger dark event by mocking
       handleLiveEvent({
         device_id: dev.device_id,
         type: 'device_went_dark',
-        data: { reason: "missed_3_heartbeats" },
+        data: { reason: "heartbeat_timeout_exceeded_45s" },
         timestamp: new Date().toISOString()
       });
-      showToast(`Device ${dev.name} went dark (alert triggered)`, "error");
+      showToast(`Device ${dev.name} went dark`, "error");
     }
 
     async function submitMockDevice() {
@@ -1369,7 +1426,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: "Sarah's Pixel 7",
+          name: "Child Phone (Pixel 7)",
           platform: "android",
           device_id: "android-001",
           owner_type: "child"
@@ -1381,7 +1438,6 @@
       }
     }
 
-    // Utilities
     function formatTimeAgo(isoString) {
       const diff = Math.floor((new Date() - new Date(isoString)) / 1000);
       if (diff < 5) return 'Just now';
@@ -1401,11 +1457,7 @@
 
     function escapeHtml(str) {
       if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
     function showToast(message, type = 'info') {

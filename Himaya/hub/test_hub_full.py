@@ -7,13 +7,13 @@ import requests
 import uvicorn
 import websockets
 
-BASE = "http://127.0.0.1:8000"
-WS_URL = "ws://127.0.0.1:8000/ws"
+BASE = "http://127.0.0.1:8005"
+WS_URL = "ws://127.0.0.1:8005/ws"
 
 
 def run_server():
     import main
-    uvicorn.run(main.app, host="127.0.0.1", port=8000, log_level="error")
+    uvicorn.run(main.app, host="127.0.0.1", port=8005, log_level="error")
 
 
 async def async_ws_test():
@@ -41,6 +41,9 @@ async def async_ws_test():
 
 
 def test_full():
+    import database
+    database.clear_all_data()
+
     # 1. Register device
     dev = requests.post(f"{BASE}/devices", json={
         "name": "Sarah's Tablet",

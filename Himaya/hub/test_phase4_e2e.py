@@ -17,6 +17,9 @@ def run_server():
 
 
 async def verify_remote_actions():
+    import database
+    database.clear_all_data()
+
     # Connect WebSocket client to observe live broadcasts
     async with websockets.connect(WS_URL) as ws:
         snapshot_raw = await ws.recv()

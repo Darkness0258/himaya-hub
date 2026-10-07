@@ -1,0 +1,68 @@
+{
+  "entries": {
+    "cmd-1791313674824": {
+      "key": "cmd-1791313674824",
+      "value": "{\"command\":\"mkdir\",\"exitCode\":0,\"success\":true}",
+      "namespace": "commands",
+      "storedAt": "2026-10-06T19:07:54.824Z",
+      "lastAccessed": "2026-10-06T19:07:54.824Z",
+      "accessCount": 0,
+      "expiresAt": "2026-11-05T19:07:54.824Z"
+    },
+    "cmd-1791313693814": {
+      "key": "cmd-1791313693814",
+      "value": "{\"command\":\"ls\",\"exitCode\":0,\"success\":true}",
+      "namespace": "commands",
+      "storedAt": "2026-10-06T19:08:13.814Z",
+      "lastAccessed": "2026-10-06T19:08:13.814Z",
+      "accessCount": 0,
+      "expiresAt": "2026-11-05T19:08:13.814Z"
+    },
+    "cmd-1791313760547": {
+      "key": "cmd-1791313760547",
+      "value": "{\"command\":\"cd\",\"exitCode\":0,\"success\":true}",
+      "namespace": "commands",
+      "storedAt": "2026-10-06T19:09:20.547Z",
+      "lastAccessed": "2026-10-06T19:09:20.547Z",
+      "accessCount": 0,
+      "expiresAt": "2026-11-05T19:09:20.547Z"
+    },
+    "cmd-1791313883063": {
+      "key": "cmd-1791313883063",
+      "value": "{\"command\":\"ls\",\"exitCode\":0,\"success\":true}",
+      "namespace": "commands",
+      "storedAt": "2026-10-06T19:11:23.063Z",
+      "lastAccessed": "2026-10-06T19:11:23.063Z",
+      "accessCount": 0,
+      "expiresAt": "2026-11-05T19:11:23.063Z"
+    },
+    "cmd-1791313901547": {
+      "key": "cmd-1791313901547",
+      "value": "{\"command\":\"cd\",\"exitCode\":0,\"success\":true}",
+      "namespace": "commands",
+      "storedAt": "2026-10-06T19:11:41.547Z",
+      "lastAccessed": "2026-10-06T19:11:41.547Z",
+      "accessCount": 0,
+      "expiresAt": "2026-11-05T19:11:41.547Z"
+    },
+    "cmd-1791313965111": {
+      "key": "cmd-1791313965111",
+      "value": "{\"command\":\"cd\",\"exitCode\":0,\"success\":true}",
+      "namespace": "commands",
+      "storedAt": "2026-10-06T19:12:45.111Z",
+      "lastAccessed": "2026-10-06T19:12:45.111Z",
+      "accessCount": 0,
+      "expiresAt": "2026-11-05T19:12:45.111Z"
+    },
+    "cmd-1791314020463": {
+      "key": "cmd-1791314020463",
+      "value": "{\"command\":\"powershell\",\"exitCode\":0,\"success\":true}",
+      "namespace": "commands",
+      "storedAt": "2026-10-06T19:13:40.463Z",
+      "lastAccessed": "2026-10-06T19:13:40.463Z",
+      "accessCount": 0,
+      "expiresAt": "2026-11-05T19:13:40.463Z"
+    }
+  },
+  "version": "3.0.0"
+}

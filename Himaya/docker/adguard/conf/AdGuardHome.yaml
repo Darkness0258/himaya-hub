@@ -1,0 +1,107 @@
+# AdGuard Home configuration — Himaya Phase 0 proof
+# Local-first DNS filter. Listens on 53, admin UI on 80.
+
+bind_addr:
+  - "0.0.0.0:53"
+  - "[::]:53"
+
+# HTTP and HTTPS admin API
+http_addr: "0.0.0.0:80"
+http_port: 80
+
+# TLS admin API (optional, off by default)
+https_port: 443
+
+# DNS-over-TLS / DNS-over-HTTPS — clients can query securely
+dns_addr:
+  - "0.0.0.0:53"
+  - "[::]:53"
+  - "0.0.0.0:853"
+  - "[::]:853"
+
+# Upstream resolvers — public, encrypted
+upstream_dns:
+  - "tls://dns.google"
+  - "tls://dns.quad9.net"
+  - "https://dns.google/dns-query"
+  - "https://dns.quad9.net/dns-query"
+
+# Block ads and trackers by default
+filtering:
+  - enabled: true
+    name: AdGuard DNS Filter
+    url: "https://adguard-dns.github.io/AdGuardDNSFilter/hosts.txt"
+    in_cache: false
+    in_memory: false
+
+  - enabled: true
+    name: AdGuard Social Media Filter
+    url: "https://adguard-dns.github.io/AdGuardSocialFilter/hosts.txt"
+    in_cache: false
+    in_memory: false
+
+# Himaya custom rules — block social media + explicit content
+# Add more rules here as the rules engine evolves.
+user_rules:
+  - |
+    # Himaya custom blocklist (Phase 0 proof)
+    ||youtube.com^
+    ||www.youtube.com^
+    ||tiktok.com^
+    ||www.tiktok.com^
+    ||instagram.com^
+    ||www.instagram.com^
+    ||facebook.com^
+    ||www.facebook.com^
+    ||twitter.com^
+    ||x.com^
+    ||reddit.com^
+    ||www.reddit.com^
+    ||pornhub.com^
+    ||xvideos.com^
+    ||xhamster.com^
+    ||redtube.com^
+
+# Allowlisted sites (DNS bypass) — never blocked
+whitelist:
+  - enabled: true
+    name: Himaya allowlist
+    url: "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
+    in_cache: false
+    in_memory: false
+
+# Query log retention
+querylog_interval: 24
+querylog_enabled: true
+
+# DNS cache
+cache_size: 4096
+cache_enabled: true
+
+# Safe search — enforce on search engines
+safe_search:
+  - enabled: true
+    name: Google SafeSearch
+    search: "https://www.google.com/search?q={q}"
+    url: "https://www.google.com/safesearch?q={q}"
+  - enabled: true
+    name: Bing SafeSearch
+    search: "https://www.bing.com/search?q={q}"
+    url: "https://www.bing.com/safesearch?q={q}"
+
+# Block phishing and malware
+blocked_services:
+  - name: "phishing"
+    enabled: true
+    url: "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
+    interval: 24
+
+# Don't log queries for allowlisted (privacy)
+client_id_block: false
+
+# Allow clients to bypass (for admin devices)
+blocked_clients: []
+clients:
+  - name: "himaya-admin"
+    ips: []
+    ids: []

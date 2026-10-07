@@ -1,0 +1,86 @@
+{
+  "entries": {
+    "cmd-1791314039261": {
+      "key": "cmd-1791314039261",
+      "value": "{\"command\":\"cd\",\"exitCode\":0,\"success\":true}",
+      "namespace": "commands",
+      "storedAt": "2026-10-06T19:13:59.261Z",
+      "lastAccessed": "2026-10-06T19:13:59.261Z",
+      "accessCount": 0,
+      "expiresAt": "2026-11-05T19:13:59.261Z"
+    },
+    "cmd-1791314075262": {
+      "key": "cmd-1791314075262",
+      "value": "{\"command\":\"cd\",\"exitCode\":0,\"success\":true}",
+      "namespace": "commands",
+      "storedAt": "2026-10-06T19:14:35.262Z",
+      "lastAccessed": "2026-10-06T19:14:35.262Z",
+      "accessCount": 0,
+      "expiresAt": "2026-11-05T19:14:35.262Z"
+    },
+    "cmd-1791314109067": {
+      "key": "cmd-1791314109067",
+      "value": "{\"command\":\"powershell\",\"exitCode\":0,\"success\":true}",
+      "namespace": "commands",
+      "storedAt": "2026-10-06T19:15:09.067Z",
+      "lastAccessed": "2026-10-06T19:15:09.067Z",
+      "accessCount": 0,
+      "expiresAt": "2026-11-05T19:15:09.067Z"
+    },
+    "cmd-1791314230127": {
+      "key": "cmd-1791314230127",
+      "value": "{\"command\":\"powershell\",\"exitCode\":0,\"success\":true}",
+      "namespace": "commands",
+      "storedAt": "2026-10-06T19:17:10.127Z",
+      "lastAccessed": "2026-10-06T19:17:10.127Z",
+      "accessCount": 0,
+      "expiresAt": "2026-11-05T19:17:10.127Z"
+    },
+    "cmd-1791335290520": {
+      "key": "cmd-1791335290520",
+      "value": "{\"command\":\"netstat\",\"exitCode\":0,\"success\":true}",
+      "namespace": "commands",
+      "storedAt": "2026-10-07T01:08:10.520Z",
+      "lastAccessed": "2026-10-07T01:08:10.520Z",
+      "accessCount": 0,
+      "expiresAt": "2026-11-06T01:08:10.520Z"
+    },
+    "cmd-1791335664954": {
+      "key": "cmd-1791335664954",
+      "value": "{\"command\":\"cd\",\"exitCode\":0,\"success\":true}",
+      "namespace": "commands",
+      "storedAt": "2026-10-07T01:14:24.954Z",
+      "lastAccessed": "2026-10-07T01:14:24.954Z",
+      "accessCount": 0,
+      "expiresAt": "2026-11-06T01:14:24.954Z"
+    },
+    "cmd-1791335803137": {
+      "key": "cmd-1791335803137",
+      "value": "{\"command\":\"cd\",\"exitCode\":0,\"success\":true}",
+      "namespace": "commands",
+      "storedAt": "2026-10-07T01:16:43.137Z",
+      "lastAccessed": "2026-10-07T01:16:43.137Z",
+      "accessCount": 0,
+      "expiresAt": "2026-11-06T01:16:43.137Z"
+    },
+    "cmd-1791335845000": {
+      "key": "cmd-1791335845000",
+      "value": "{\"command\":\"cd\",\"exitCode\":0,\"success\":true}",
+      "namespace": "commands",
+      "storedAt": "2026-10-07T01:17:25.000Z",
+      "lastAccessed": "2026-10-07T01:17:25.000Z",
+      "accessCount": 0,
+      "expiresAt": "2026-11-06T01:17:25.000Z"
+    },
+    "cmd-1791336061118": {
+      "key": "cmd-1791336061118",
+      "value": "{\"command\":\"mkdir\",\"exitCode\":0,\"success\":true}",
+      "namespace": "commands",
+      "storedAt": "2026-10-07T01:21:01.118Z",
+      "lastAccessed": "2026-10-07T01:21:01.118Z",
+      "accessCount": 0,
+      "expiresAt": "2026-11-06T01:21:01.118Z"
+    }
+  },
+  "version": "3.0.0"
+}

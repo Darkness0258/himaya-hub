@@ -15,7 +15,27 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 DB_PATH = Path(__file__).parent / "himaya.db"
-DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
+
+# Load local .env file if present
+ENV_FILE = Path(__file__).parent / ".env"
+if not ENV_FILE.exists():
+    ENV_FILE = Path(__file__).parent.parent / ".env"
+if ENV_FILE.exists():
+    try:
+        with open(ENV_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    k, v = k.strip(), v.strip().strip('"').strip("'")
+                    if k not in os.environ:
+                        os.environ[k] = v
+    except Exception:
+        pass
+
+
+def get_database_url() -> Optional[str]:
+    return os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
 
 
 _pg_available: Optional[bool] = None
@@ -23,7 +43,8 @@ _pg_available: Optional[bool] = None
 
 def is_postgres() -> bool:
     global _pg_available
-    if not DATABASE_URL:
+    db_url = get_database_url()
+    if not db_url:
         return False
     if _pg_available is False:
         return False
@@ -95,7 +116,7 @@ class DBConnection:
             try:
                 import psycopg2
                 from psycopg2.extras import RealDictCursor
-                url = DATABASE_URL
+                url = get_database_url() or ""
                 if url.startswith("postgres://"):
                     url = url.replace("postgres://", "postgresql://", 1)
                 self.conn = psycopg2.connect(url, cursor_factory=RealDictCursor, connect_timeout=5)

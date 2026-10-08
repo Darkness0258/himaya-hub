@@ -41,6 +41,51 @@ def _safe_json_load(val: Any, default: Any = None) -> Any:
         return default if default is not None else {}
 
 
+class CursorWrapper:
+    """Wraps database cursor to provide unified parameter placeholders and lastrowid across SQLite and PostgreSQL."""
+    def __init__(self, raw_cursor, is_pg: bool):
+        self._cur = raw_cursor
+        self._is_pg = is_pg
+        self.lastrowid = getattr(raw_cursor, "lastrowid", None)
+
+    def execute(self, sql: str, params: Any = ()):
+        if self._is_pg:
+            # PostgreSQL requires %s instead of SQLite's ? placeholder
+            sql = sql.replace("?", "%s")
+            if isinstance(params, list):
+                params = tuple(params)
+            sql_clean = sql.strip().rstrip(";").strip()
+            # If INSERT into a table with serial ID, capture generated ID
+            if sql_clean.upper().startswith("INSERT") and "RETURNING" not in sql_clean.upper() and "ON CONFLICT" not in sql_clean.upper():
+                try:
+                    self._cur.execute(sql_clean + " RETURNING id;", params)
+                    row = self._cur.fetchone()
+                    if row:
+                        if isinstance(row, dict) and "id" in row:
+                            self.lastrowid = row["id"]
+                        elif isinstance(row, (tuple, list)) and len(row) > 0:
+                            self.lastrowid = row[0]
+                    return self
+                except Exception:
+                    pass
+        self._cur.execute(sql, params)
+        if not self._is_pg:
+            self.lastrowid = getattr(self._cur, "lastrowid", None)
+        return self
+
+    def fetchone(self):
+        return self._cur.fetchone()
+
+    def fetchall(self):
+        return self._cur.fetchall()
+
+    def __iter__(self):
+        return iter(self._cur)
+
+    def __getattr__(self, name):
+        return getattr(self._cur, name)
+
+
 class DBConnection:
     """Unified context manager supporting both SQLite and PostgreSQL (Supabase)."""
     def __init__(self):
@@ -77,13 +122,10 @@ class DBConnection:
         self.conn.close()
 
     def cursor(self):
-        return self.conn.cursor()
+        return CursorWrapper(self.conn.cursor(), self.is_pg)
 
     def execute(self, sql: str, params: tuple = ()):
-        cur = self.conn.cursor()
-        if self.is_pg:
-            # Adapt SQLite ? placeholders to PostgreSQL %s
-            sql = sql.replace("?", "%s")
+        cur = self.cursor()
         cur.execute(sql, params)
         return cur
 
@@ -362,7 +404,7 @@ def pop_pending_commands(device_id: str) -> List[Dict[str, Any]]:
             return []
 
         ids = [r["id"] for r in rows]
-        cursor.execute(f"UPDATE commands SET status = 'consumed' WHERE id IN ({','.join(['?']*len(ids))})", ids)
+        cursor.execute(f"UPDATE commands SET status = 'consumed' WHERE id IN ({','.join(['?']*len(ids))})", tuple(ids))
         conn.commit()
 
         results = []

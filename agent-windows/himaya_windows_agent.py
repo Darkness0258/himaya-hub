@@ -224,6 +224,9 @@ class WindowsAgent:
             show_windows_notification("Internet Restored", "Your internet access has been restored.")
         elif action == "wipe":
             show_windows_notification("SECURITY ALERT", "Remote wipe requested by administrator.")
+        elif action in ("snapshot", "capture_screen"):
+            print("[Agent] Triggering instant on-demand screenshot requested by parent...")
+            self.capture_and_upload_snapshot()
 
     def check_vpn_evasion(self):
         """Inspect network interfaces to detect unauthorized VPNs."""

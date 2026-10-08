@@ -63,4 +63,5 @@ class RemoteAction(str, Enum):
     UNPAUSE = "unpause"
     FORCE_CLOSE_APP = "force_close_app"
     PUSH_NOTIFICATION = "push_notification"
+    SNAPSHOT = "snapshot"
     WIPE = "wipe"

@@ -213,6 +213,17 @@ async def set_public_hub_url(body: SetPublicUrlRequest):
     return {"status": "ok", "public_url": cleaned}
 
 
+def resolve_request_base_url(request: Request) -> str:
+    host_header = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
+    proto = request.headers.get("x-forwarded-proto", "")
+    if not proto:
+        proto = "https" if ("onrender.com" in host_header or "vercel.app" in host_header) else "http"
+    if host_header:
+        return f"{proto}://{host_header}".rstrip("/")
+    lan = get_lan_ip()
+    return f"http://{lan}:8000"
+
+
 @app.get("/enroll/info")
 async def get_enrollment_info(request: Request, target: Optional[str] = None):
     """Returns dynamic network addresses and enrollment credentials for real devices across Internet & LAN."""
@@ -220,12 +231,20 @@ async def get_enrollment_info(request: Request, target: Optional[str] = None):
     public_ip = get_public_ip()
     saved_public_url = database.get_setting("public_hub_url") or os.environ.get("HIMAYA_PUBLIC_URL")
 
+    request_base_url = resolve_request_base_url(request)
+    is_public_domain = "onrender.com" in request_base_url or request_base_url.startswith("https://") or not any(
+        request_base_url.startswith(p) for p in ["http://localhost", "http://127.0.0.1", "http://192.168.", "http://10.", "http://172."]
+    )
+
     lan_hub_url = f"http://{lan_ip}:8000"
-    internet_hub_url = saved_public_url.rstrip("/") if saved_public_url else f"http://{public_ip}:8000"
+    if saved_public_url:
+        internet_hub_url = saved_public_url.rstrip("/")
+    elif is_public_domain:
+        internet_hub_url = request_base_url
+    else:
+        internet_hub_url = f"http://{public_ip}:8000"
 
-    host_header = request.headers.get("host", "")
-    active_hub_url = f"http://{host_header}" if host_header else lan_hub_url
-
+    active_hub_url = request_base_url if is_public_domain else lan_hub_url
     pin = get_enrollment_pin()
 
     return {
@@ -244,31 +263,36 @@ async def get_enrollment_info(request: Request, target: Optional[str] = None):
             "hub_url": internet_hub_url,
             "windows_cmd": f"irm {internet_hub_url}/enroll/win?target=internet | iex",
             "mobile_url": f"{internet_hub_url}/enroll/mobile?target=internet",
-            "qr_url": f"/enroll/qr?target=internet",
+            "qr_url": f"/enroll/qr?target=internet&hub_url={internet_hub_url}",
         },
         "hub_url": active_hub_url,
         "windows_cmd": f"irm {active_hub_url}/enroll/win | iex",
         "mobile_url": f"{active_hub_url}/enroll/mobile",
-        "qr_url": f"/enroll/qr"
+        "qr_url": f"/enroll/qr?hub_url={active_hub_url}"
     }
 
 
 @app.get("/enroll/qr")
 async def get_enrollment_qr(request: Request, target: Optional[str] = "auto", hub_url: Optional[str] = None):
     """Generates a QR Code PNG for phone camera enrollment (supporting LAN and Internet)."""
+    request_base_url = resolve_request_base_url(request)
+    saved_public_url = database.get_setting("public_hub_url") or os.environ.get("HIMAYA_PUBLIC_URL")
+    public_ip = get_public_ip()
+    lan_ip = get_lan_ip()
+
     if hub_url:
         resolved_url = hub_url.rstrip("/")
     elif target == "internet":
-        saved_public_url = database.get_setting("public_hub_url") or os.environ.get("HIMAYA_PUBLIC_URL")
-        public_ip = get_public_ip()
-        resolved_url = saved_public_url.rstrip("/") if saved_public_url else f"http://{public_ip}:8000"
+        if saved_public_url:
+            resolved_url = saved_public_url.rstrip("/")
+        elif "onrender.com" in request_base_url or request_base_url.startswith("https://"):
+            resolved_url = request_base_url
+        else:
+            resolved_url = f"http://{public_ip}:8000"
     elif target == "lan":
-        lan_ip = get_lan_ip()
         resolved_url = f"http://{lan_ip}:8000"
     else:
-        lan_ip = get_lan_ip()
-        host_header = request.headers.get("host", f"{lan_ip}:8000")
-        resolved_url = f"http://{host_header}"
+        resolved_url = request_base_url
 
     target_url = f"{resolved_url}/enroll/mobile"
     img = qrcode.make(target_url)
@@ -281,11 +305,18 @@ async def get_enrollment_qr(request: Request, target: Optional[str] = "auto", hu
 @app.get("/enroll/win")
 async def get_windows_installer_script(request: Request, target: Optional[str] = "auto", hub_url: Optional[str] = None):
     """Serves the 1-click PowerShell installer script for any Windows PC over Internet or LAN."""
+    request_base_url = resolve_request_base_url(request)
     lan_ip = get_lan_ip()
     public_ip = get_public_ip()
     saved_public_url = database.get_setting("public_hub_url") or os.environ.get("HIMAYA_PUBLIC_URL")
+
     lan_hub_url = f"http://{lan_ip}:8000"
-    internet_hub_url = saved_public_url.rstrip("/") if saved_public_url else f"http://{public_ip}:8000"
+    if saved_public_url:
+        internet_hub_url = saved_public_url.rstrip("/")
+    elif "onrender.com" in request_base_url or request_base_url.startswith("https://"):
+        internet_hub_url = request_base_url
+    else:
+        internet_hub_url = f"http://{public_ip}:8000"
 
     if hub_url:
         primary_hub = hub_url.rstrip("/")
@@ -294,8 +325,7 @@ async def get_windows_installer_script(request: Request, target: Optional[str] =
     elif target == "lan":
         primary_hub = lan_hub_url
     else:
-        host_header = request.headers.get("host", f"{lan_ip}:8000")
-        primary_hub = f"http://{host_header}"
+        primary_hub = request_base_url
 
     script = f'''# Himaya Automatic Windows Agent Installer (Internet & LAN Multi-Homed)
 $ErrorActionPreference = "Stop"
@@ -614,6 +644,21 @@ async def get_device(device_id: str):
     return dev
 
 
+@app.delete("/devices/{device_id}")
+async def delete_device(device_id: str):
+    dev = database.get_device(device_id)
+    if not dev:
+        raise HTTPException(status_code=404, detail=f"Device {device_id} not found")
+    database.delete_device(device_id)
+    emit(Event(
+        device_id=device_id,
+        type=EventType.POLICY_SYNC,
+        data={"action": "device_deleted", "device_id": device_id},
+        timestamp=datetime.now(timezone.utc)
+    ))
+    return {"status": "deleted", "device_id": device_id}
+
+
 @app.get("/events")
 async def get_events(limit: int = 50):
     return database.list_events(limit=limit)
@@ -633,7 +678,20 @@ async def ws_feed(ws: WebSocket):
             "events": recent_events
         })
         while True:
-            await ws.receive_text()
+            raw_msg = await ws.receive_text()
+            try:
+                msg = json.loads(raw_msg)
+                if msg.get("type") == "test_dns_block":
+                    dev_id = msg.get("device_id")
+                    if dev_id:
+                        emit(Event(
+                            device_id=dev_id,
+                            type=EventType.DNS_BLOCK,
+                            data={"host": msg.get("host", "blocked-threat-domain.com")},
+                            timestamp=datetime.now(timezone.utc)
+                        ))
+            except Exception:
+                pass
     except WebSocketDisconnect:
         pass
     except Exception:

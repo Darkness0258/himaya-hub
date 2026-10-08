@@ -342,6 +342,17 @@ def update_device_status(device_id: str, status: str, ip: Optional[str] = None, 
         conn.commit()
 
 
+def delete_device(device_id: str) -> bool:
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM devices WHERE device_id = ?", (device_id,))
+        cursor.execute("DELETE FROM commands WHERE device_id = ?", (device_id,))
+        cursor.execute("DELETE FROM rules WHERE device_id = ?", (device_id,))
+        cursor.execute("DELETE FROM events WHERE device_id = ?", (device_id,))
+        conn.commit()
+        return True
+
+
 # --- Event Operations ---
 def insert_event(device_id: str, event_type: str, data: dict, timestamp: str) -> int:
     with get_connection() as conn:

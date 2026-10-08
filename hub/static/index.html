@@ -3,23 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Himaya — Next-Gen Family Device Defense Hub</title>
+  <title>Himaya — Next-Gen Family Defense & Device Shield</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <!-- External Assets: Lucide Icons & Chart.js -->
+  <!-- Lucide Icons & Chart.js -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
   <style>
     :root {
-      --bg-base: #06090f;
-      --bg-surface: #0c121e;
-      --bg-surface-elevated: rgba(18, 26, 43, 0.75);
-      --bg-glass: rgba(12, 18, 30, 0.72);
-      --bg-glass-card: rgba(16, 24, 40, 0.65);
+      --bg-base: #060911;
+      --bg-surface: #0b1120;
+      --bg-surface-elevated: rgba(17, 24, 39, 0.85);
+      --bg-glass: rgba(11, 17, 32, 0.78);
+      --bg-glass-card: rgba(15, 23, 42, 0.72);
       --border-subtle: rgba(255, 255, 255, 0.08);
-      --border-subtle-hover: rgba(255, 255, 255, 0.16);
+      --border-subtle-hover: rgba(255, 255, 255, 0.18);
       --border-focus: rgba(16, 185, 129, 0.6);
       
       --text-primary: #f8fafc;
@@ -29,36 +29,40 @@
 
       --accent-emerald: #10b981;
       --accent-emerald-light: #34d399;
-      --accent-emerald-glow: rgba(16, 185, 129, 0.25);
-      --accent-emerald-dim: rgba(16, 185, 129, 0.12);
+      --accent-emerald-glow: rgba(16, 185, 129, 0.28);
+      --accent-emerald-dim: rgba(16, 185, 129, 0.14);
 
       --accent-cyan: #06b6d4;
+      --accent-cyan-light: #38bdf8;
       --accent-cyan-glow: rgba(6, 182, 212, 0.25);
-      --accent-cyan-dim: rgba(6, 182, 212, 0.12);
+      --accent-cyan-dim: rgba(6, 182, 212, 0.14);
 
       --accent-indigo: #6366f1;
-      --accent-indigo-dim: rgba(99, 102, 241, 0.12);
+      --accent-indigo-light: #818cf8;
+      --accent-indigo-dim: rgba(99, 102, 241, 0.14);
 
       --accent-amber: #f59e0b;
+      --accent-amber-light: #fbbf24;
       --accent-amber-glow: rgba(245, 158, 11, 0.25);
-      --accent-amber-dim: rgba(245, 158, 11, 0.12);
+      --accent-amber-dim: rgba(245, 158, 11, 0.14);
 
       --accent-rose: #f43f5e;
-      --accent-rose-glow: rgba(244, 63, 94, 0.28);
-      --accent-rose-dim: rgba(244, 63, 94, 0.12);
+      --accent-rose-light: #fb7185;
+      --accent-rose-glow: rgba(244, 63, 94, 0.32);
+      --accent-rose-dim: rgba(244, 63, 94, 0.14);
 
       --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
 
       --radius-sm: 8px;
       --radius-md: 12px;
-      --radius-lg: 18px;
-      --radius-xl: 24px;
+      --radius-lg: 16px;
+      --radius-xl: 22px;
       --radius-full: 9999px;
 
-      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
-      --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
+      --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.6);
       --shadow-glow: 0 0 32px var(--accent-emerald-glow);
     }
 
@@ -71,30 +75,30 @@
       min-height: 100vh;
       overflow-x: hidden;
       background-image: 
-        radial-gradient(circle at 10% 5%, rgba(16, 185, 129, 0.08) 0%, transparent 45%),
-        radial-gradient(circle at 90% 15%, rgba(6, 182, 212, 0.07) 0%, transparent 40%),
-        radial-gradient(circle at 50% 90%, rgba(99, 102, 241, 0.05) 0%, transparent 50%),
-        radial-gradient(circle at 50% 50%, rgba(12, 18, 30, 0.6) 0%, transparent 100%);
+        radial-gradient(circle at 12% 8%, rgba(16, 185, 129, 0.09) 0%, transparent 45%),
+        radial-gradient(circle at 88% 12%, rgba(6, 182, 212, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 50% 92%, rgba(99, 102, 241, 0.07) 0%, transparent 55%),
+        radial-gradient(circle at 50% 50%, rgba(11, 17, 32, 0.6) 0%, transparent 100%);
       background-attachment: fixed;
       -webkit-font-smoothing: antialiased;
     }
 
-    /* Layout Container */
+    /* Layout Shell */
     .app-shell {
       max-width: 1480px;
       margin: 0 auto;
-      padding: 24px 32px 64px 32px;
+      padding: 22px 28px 60px 28px;
       display: flex;
       flex-direction: column;
-      gap: 28px;
+      gap: 24px;
     }
 
-    /* Header Nav */
+    /* App Header */
     header.app-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 16px 28px;
+      padding: 14px 24px;
       background: var(--bg-glass);
       backdrop-filter: blur(24px);
       -webkit-backdrop-filter: blur(24px);
@@ -102,14 +106,14 @@
       border-radius: var(--radius-xl);
       box-shadow: var(--shadow-md);
       position: sticky;
-      top: 16px;
+      top: 14px;
       z-index: 90;
     }
 
     .brand-cluster {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 14px;
     }
 
     .brand-mark {
@@ -125,25 +129,12 @@
       position: relative;
     }
 
-    .brand-mark::after {
-      content: '';
-      position: absolute;
-      inset: -1px;
-      border-radius: var(--radius-md);
-      padding: 1px;
-      background: linear-gradient(135deg, rgba(255,255,255,0.4), transparent);
-      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-      -webkit-mask-composite: xor;
-      mask-composite: exclude;
-      pointer-events: none;
-    }
-
     .brand-meta h1 {
       font-size: 1.35rem;
       font-weight: 800;
       letter-spacing: -0.03em;
       line-height: 1.1;
-      background: linear-gradient(135deg, #ffffff 40%, #a7f3d0 100%);
+      background: linear-gradient(135deg, #ffffff 30%, #a7f3d0 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
@@ -160,29 +151,30 @@
     .header-actions {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
+      flex-wrap: wrap;
     }
 
-    /* Live Status Pill */
+    /* Status Pill */
     .status-pill {
       display: flex;
       align-items: center;
       gap: 8px;
       padding: 6px 14px;
       background: var(--accent-emerald-dim);
-      border: 1px solid rgba(16, 185, 129, 0.3);
+      border: 1px solid rgba(16, 185, 129, 0.35);
       border-radius: var(--radius-full);
       font-family: var(--font-mono);
-      font-size: 0.75rem;
+      font-size: 0.74rem;
       font-weight: 600;
       color: var(--accent-emerald-light);
-      letter-spacing: 0.04em;
+      letter-spacing: 0.03em;
     }
 
     .status-pill.disconnected {
       background: var(--accent-rose-dim);
-      border-color: rgba(244, 63, 94, 0.3);
-      color: #fda4af;
+      border-color: rgba(244, 63, 94, 0.35);
+      color: var(--accent-rose-light);
     }
 
     .pulse-dot {
@@ -202,7 +194,7 @@
 
     @keyframes pulse-glow {
       0%, 100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.4); opacity: 0.5; }
+      50% { transform: scale(1.35); opacity: 0.5; }
     }
 
     /* Buttons */
@@ -229,7 +221,7 @@
     }
 
     .btn:active {
-      transform: translateY(0);
+      transform: scale(0.98);
     }
 
     .btn-primary {
@@ -239,30 +231,30 @@
     }
 
     .btn-primary:hover {
-      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
       background: linear-gradient(135deg, #047857 0%, #059669 100%);
     }
 
     .btn-secondary {
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.06);
       color: var(--text-primary);
       border-color: var(--border-subtle);
     }
 
     .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.09);
+      background: rgba(255, 255, 255, 0.1);
       border-color: var(--border-subtle-hover);
     }
 
     .btn-danger {
-      background: rgba(244, 63, 94, 0.12);
-      color: #fb7185;
-      border-color: rgba(244, 63, 94, 0.3);
+      background: rgba(244, 63, 94, 0.14);
+      color: var(--accent-rose-light);
+      border-color: rgba(244, 63, 94, 0.35);
     }
 
     .btn-danger:hover {
-      background: rgba(244, 63, 94, 0.2);
-      border-color: rgba(244, 63, 94, 0.5);
+      background: rgba(244, 63, 94, 0.25);
+      border-color: rgba(244, 63, 94, 0.55);
       color: #ffffff;
     }
 
@@ -272,18 +264,29 @@
       border-radius: var(--radius-sm);
     }
 
+    /* Rotate animation for refresh button */
+    .spin-icon {
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+
     /* Segmented Tab Bar */
     .tab-bar-container {
       display: flex;
       justify-content: space-between;
       align-items: center;
       border-bottom: 1px solid var(--border-subtle);
-      padding-bottom: 14px;
+      padding-bottom: 12px;
+      gap: 16px;
+      flex-wrap: wrap;
     }
 
     .segmented-tabs {
       display: inline-flex;
-      background: rgba(15, 23, 42, 0.6);
+      background: rgba(15, 23, 42, 0.7);
       padding: 4px;
       border-radius: var(--radius-lg);
       border: 1px solid var(--border-subtle);
@@ -307,14 +310,14 @@
 
     .nav-tab:hover {
       color: var(--text-primary);
-      background: rgba(255, 255, 255, 0.04);
+      background: rgba(255, 255, 255, 0.05);
     }
 
     .nav-tab.active {
       color: var(--text-primary);
       background: var(--bg-surface-elevated);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
     }
 
     .nav-tab.active i {
@@ -325,7 +328,7 @@
     .metrics-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 18px;
+      gap: 16px;
     }
 
     .metric-card {
@@ -340,7 +343,18 @@
       gap: 12px;
       position: relative;
       overflow: hidden;
-      transition: all 0.2s ease;
+      transition: all 0.22s ease;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
     }
 
     .metric-card:hover {
@@ -356,7 +370,7 @@
     }
 
     .metric-label {
-      font-size: 0.82rem;
+      font-size: 0.8rem;
       font-weight: 600;
       color: var(--text-secondary);
       text-transform: uppercase;
@@ -376,7 +390,7 @@
     }
 
     .metric-value {
-      font-size: 2.2rem;
+      font-size: 2.25rem;
       font-weight: 800;
       letter-spacing: -0.03em;
       line-height: 1;
@@ -396,7 +410,7 @@
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      padding: 2px 7px;
+      padding: 2px 8px;
       border-radius: var(--radius-full);
       font-size: 0.72rem;
       font-weight: 600;
@@ -410,17 +424,12 @@
 
     .pill-blue {
       background: var(--accent-cyan-dim);
-      color: #67e8f9;
+      color: var(--accent-cyan-light);
     }
 
     .pill-rose {
       background: var(--accent-rose-dim);
-      color: #fda4af;
-    }
-
-    .pill-amber {
-      background: var(--accent-amber-dim);
-      color: #fde047;
+      color: var(--accent-rose-light);
     }
 
     /* Live Telemetry Chart Section */
@@ -428,16 +437,19 @@
       background: var(--bg-glass-card);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-lg);
-      padding: 22px 26px;
+      padding: 20px 24px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
     }
 
     .telemetry-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
     }
 
     .telemetry-title {
@@ -447,22 +459,37 @@
     }
 
     .telemetry-title h2 {
-      font-size: 1rem;
+      font-size: 0.98rem;
       font-weight: 700;
       letter-spacing: -0.01em;
     }
 
     .chart-container {
       position: relative;
-      height: 140px;
+      height: 135px;
       width: 100%;
+    }
+
+    /* Tab Layout Views */
+    .tab-view-container {
+      display: none;
+      animation: fadeIn 0.25s ease forwards;
+    }
+
+    .tab-view-container.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     /* Two-Column Cockpit Layout */
     .cockpit-layout {
       display: grid;
       grid-template-columns: 1fr 410px;
-      gap: 28px;
+      gap: 24px;
       align-items: start;
     }
 
@@ -471,7 +498,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
 
     .section-title-bar h2 {
@@ -494,7 +521,7 @@
       font-size: 0.72rem;
       font-family: var(--font-mono);
       font-weight: 500;
-      background: rgba(255, 255, 255, 0.04);
+      background: rgba(255, 255, 255, 0.05);
       border: 1px solid var(--border-subtle);
       color: var(--text-secondary);
     }
@@ -515,9 +542,10 @@
       padding: 22px;
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 16px;
       position: relative;
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
     }
 
     .device-card:hover {
@@ -540,7 +568,7 @@
 
     .device-card.offline {
       border-top: 3px solid var(--text-muted);
-      opacity: 0.85;
+      opacity: 0.88;
     }
 
     .card-top {
@@ -560,7 +588,7 @@
       width: 48px;
       height: 48px;
       border-radius: var(--radius-md);
-      background: rgba(255, 255, 255, 0.04);
+      background: rgba(255, 255, 255, 0.05);
       border: 1px solid var(--border-subtle);
       display: flex;
       align-items: center;
@@ -592,7 +620,7 @@
       border-radius: 4px;
       background: var(--accent-indigo-dim);
       color: #c7d2fe;
-      border: 1px solid rgba(99, 102, 241, 0.25);
+      border: 1px solid rgba(99, 102, 241, 0.3);
     }
 
     .platform-badge {
@@ -605,9 +633,6 @@
       background: rgba(255, 255, 255, 0.06);
       color: var(--text-secondary);
       border: 1px solid var(--border-subtle);
-      display: flex;
-      align-items: center;
-      gap: 4px;
     }
 
     /* Live State Pill in Card */
@@ -627,25 +652,25 @@
     .state-indicator.online {
       background: var(--accent-emerald-dim);
       color: var(--accent-emerald-light);
-      border: 1px solid rgba(16, 185, 129, 0.3);
+      border: 1px solid rgba(16, 185, 129, 0.35);
     }
 
     .state-indicator.locked {
       background: var(--accent-rose-dim);
-      color: #fda4af;
-      border: 1px solid rgba(244, 63, 94, 0.3);
+      color: var(--accent-rose-light);
+      border: 1px solid rgba(244, 63, 94, 0.35);
     }
 
     .state-indicator.paused {
       background: var(--accent-amber-dim);
-      color: #fde047;
-      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: var(--accent-amber-light);
+      border: 1px solid rgba(245, 158, 11, 0.35);
     }
 
     .state-indicator.offline {
       background: rgba(100, 116, 139, 0.14);
       color: var(--text-muted);
-      border: 1px solid rgba(100, 116, 139, 0.2);
+      border: 1px solid rgba(100, 116, 139, 0.22);
     }
 
     /* Device Meta Info Table */
@@ -686,13 +711,13 @@
     }
 
     .meta-val.copyable:hover {
-      color: var(--text-primary);
+      color: var(--accent-cyan-light);
     }
 
     /* Protection Loops Row */
     .protection-badges-row {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       flex-wrap: wrap;
     }
 
@@ -704,14 +729,14 @@
       border-radius: var(--radius-full);
       font-size: 0.7rem;
       font-weight: 600;
-      background: rgba(255, 255, 255, 0.03);
+      background: rgba(255, 255, 255, 0.04);
       border: 1px solid var(--border-subtle);
       color: var(--text-muted);
     }
 
     .guard-chip.active {
-      background: rgba(16, 185, 129, 0.08);
-      border-color: rgba(16, 185, 129, 0.25);
+      background: rgba(16, 185, 129, 0.1);
+      border-color: rgba(16, 185, 129, 0.3);
       color: #6ee7b7;
     }
 
@@ -723,12 +748,20 @@
       margin-top: 4px;
     }
 
+    .card-action-secondary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
     .action-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
-      padding: 8px 12px;
+      padding: 8px 10px;
       border-radius: var(--radius-md);
       font-size: 0.78rem;
       font-weight: 600;
@@ -740,49 +773,51 @@
     }
 
     .action-btn:hover {
-      background: rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.09);
       color: var(--text-primary);
       border-color: var(--border-subtle-hover);
     }
 
-    .action-btn.lock-trigger:hover {
-      background: var(--accent-rose-dim);
-      border-color: rgba(244, 63, 94, 0.35);
-      color: #fda4af;
+    .action-btn:active {
+      transform: scale(0.97);
     }
 
-    .action-btn.unlock-trigger {
+    .action-btn.lock-trigger:hover {
+      background: var(--accent-rose-dim);
+      border-color: rgba(244, 63, 94, 0.4);
+      color: var(--accent-rose-light);
+    }
+
+    .action-btn.unlock-trigger:hover {
       background: var(--accent-emerald-dim);
-      border-color: rgba(16, 185, 129, 0.3);
+      border-color: rgba(16, 185, 129, 0.4);
       color: var(--accent-emerald-light);
     }
 
     .action-btn.pause-trigger:hover {
       background: var(--accent-amber-dim);
-      border-color: rgba(245, 158, 11, 0.35);
-      color: #fde047;
+      border-color: rgba(245, 158, 11, 0.4);
+      color: var(--accent-amber-light);
     }
 
-    .action-btn.resume-trigger {
+    .action-btn.resume-trigger:hover {
       background: var(--accent-cyan-dim);
-      border-color: rgba(6, 182, 212, 0.3);
-      color: #67e8f9;
+      border-color: rgba(6, 182, 212, 0.4);
+      color: var(--accent-cyan-light);
     }
 
-    /* Right Sidebar: Live Security Stream */
+    /* Live Security Stream Right Panel */
     .stream-panel {
       background: var(--bg-glass-card);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-lg);
-      padding: 22px;
+      padding: 20px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      max-height: calc(100vh - 120px);
-      position: sticky;
-      top: 100px;
+      gap: 14px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
     }
 
     .stream-header {
@@ -792,7 +827,7 @@
     }
 
     .stream-header h2 {
-      font-size: 1.05rem;
+      font-size: 1rem;
       font-weight: 700;
       letter-spacing: -0.01em;
       display: flex;
@@ -802,66 +837,74 @@
 
     .filter-pills {
       display: flex;
-      gap: 5px;
-      background: rgba(0, 0, 0, 0.3);
+      gap: 6px;
+      background: rgba(0, 0, 0, 0.25);
       padding: 3px;
       border-radius: var(--radius-md);
       border: 1px solid var(--border-subtle);
     }
 
     .filter-chip {
-      padding: 4px 10px;
+      flex: 1;
+      text-align: center;
+      padding: 5px 8px;
       border-radius: var(--radius-sm);
       font-size: 0.72rem;
       font-weight: 600;
       color: var(--text-muted);
+      cursor: pointer;
       background: transparent;
       border: none;
-      cursor: pointer;
       transition: all 0.15s ease;
     }
 
-    .filter-chip.active {
+    .filter-chip:hover {
       color: var(--text-primary);
-      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .filter-chip.active {
+      background: var(--bg-surface-elevated);
+      color: var(--text-primary);
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .stream-feed {
       display: flex;
       flex-direction: column;
       gap: 10px;
-      overflow-y: auto;
       max-height: 520px;
+      overflow-y: auto;
       padding-right: 4px;
     }
 
     .stream-feed::-webkit-scrollbar {
-      width: 5px;
+      width: 4px;
     }
 
     .stream-feed::-webkit-scrollbar-thumb {
       background: rgba(255, 255, 255, 0.12);
-      border-radius: var(--radius-full);
+      border-radius: 4px;
     }
 
     .event-card {
       display: flex;
       gap: 12px;
-      padding: 12px 14px;
+      padding: 10px 12px;
+      background: rgba(0, 0, 0, 0.22);
+      border: 1px solid rgba(255, 255, 255, 0.05);
       border-radius: var(--radius-md);
-      background: rgba(0, 0, 0, 0.25);
-      border: 1px solid var(--border-subtle);
+      font-size: 0.78rem;
       transition: all 0.15s ease;
     }
 
     .event-card:hover {
-      background: rgba(255, 255, 255, 0.03);
-      border-color: var(--border-subtle-hover);
+      border-color: rgba(255, 255, 255, 0.12);
+      background: rgba(0, 0, 0, 0.32);
     }
 
     .event-icon-circle {
-      width: 32px;
-      height: 32px;
+      width: 30px;
+      height: 30px;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -876,22 +919,22 @@
 
     .event-icon-circle.dns {
       background: var(--accent-cyan-dim);
-      color: #67e8f9;
+      color: var(--accent-cyan-light);
     }
 
     .event-icon-circle.vpn {
       background: var(--accent-rose-dim);
-      color: #fda4af;
+      color: var(--accent-rose-light);
     }
 
     .event-icon-circle.screenshot {
       background: var(--accent-indigo-dim);
-      color: #c7d2fe;
+      color: var(--accent-indigo-light);
     }
 
     .event-icon-circle.lock {
       background: var(--accent-rose-dim);
-      color: #fda4af;
+      color: var(--accent-rose-light);
     }
 
     .event-icon-circle.unlock {
@@ -899,17 +942,11 @@
       color: var(--accent-emerald-light);
     }
 
-    .event-icon-circle.alert {
-      background: var(--accent-amber-dim);
-      color: #fde047;
-    }
-
     .event-body {
+      flex: 1;
       display: flex;
       flex-direction: column;
       gap: 3px;
-      flex: 1;
-      min-width: 0;
     }
 
     .event-top-line {
@@ -919,44 +956,30 @@
     }
 
     .event-device-tag {
-      font-family: var(--font-mono);
-      font-size: 0.72rem;
       font-weight: 700;
       color: var(--text-primary);
-      text-overflow: ellipsis;
-      overflow: hidden;
-      white-space: nowrap;
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
     }
 
     .event-timestamp {
-      font-family: var(--font-mono);
-      font-size: 0.68rem;
       color: var(--text-muted);
-      flex-shrink: 0;
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
     }
 
     .event-detail-text {
-      font-size: 0.74rem;
       color: var(--text-secondary);
       line-height: 1.35;
-      word-break: break-word;
+      word-break: break-all;
     }
 
-    /* Screen Timeline Tab View */
-    .tab-view-container {
-      display: none;
-      flex-direction: column;
-      gap: 24px;
-    }
-
-    .tab-view-container.active {
-      display: flex;
-    }
-
+    /* TAB 2: Screen Snapshots Grid */
     .snapshots-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 18px;
+      margin-top: 14px;
     }
 
     .snapshot-item {
@@ -965,40 +988,40 @@
       border-radius: var(--radius-lg);
       overflow: hidden;
       cursor: pointer;
-      transition: all 0.2s ease;
-      display: flex;
-      flex-direction: column;
+      transition: all 0.22s ease;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
     }
 
     .snapshot-item:hover {
-      border-color: var(--border-subtle-hover);
+      border-color: var(--accent-cyan);
       transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
     }
 
     .snapshot-thumb-wrap {
+      position: relative;
       width: 100%;
       height: 180px;
-      background: #000;
+      background: #030712;
       overflow: hidden;
-      position: relative;
     }
 
     .snapshot-thumb-wrap img {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: transform 0.3s ease;
+      display: block;
+      transition: transform 0.25s ease;
     }
 
     .snapshot-item:hover .snapshot-thumb-wrap img {
-      transform: scale(1.04);
+      transform: scale(1.03);
     }
 
     .snapshot-overlay {
       position: absolute;
       inset: 0;
-      background: rgba(0, 0, 0, 0.4);
+      background: rgba(0, 0, 0, 0.45);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1016,23 +1039,23 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: rgba(0, 0, 0, 0.3);
-      border-top: 1px solid var(--border-subtle);
+      font-size: 0.78rem;
+      background: rgba(0, 0, 0, 0.25);
     }
 
     .snapshot-device-name {
-      font-size: 0.78rem;
+      font-family: var(--font-mono);
       font-weight: 700;
       color: var(--text-primary);
     }
 
     .snapshot-time-label {
-      font-family: var(--font-mono);
-      font-size: 0.7rem;
       color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
     }
 
-    /* Rules & Curfews View */
+    /* TAB 3: Rules & Curfews Deck */
     .rules-deck {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -1041,18 +1064,19 @@
 
     .settings-panel {
       background: var(--bg-glass-card);
+      backdrop-filter: blur(20px);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-lg);
       padding: 24px;
       display: flex;
       flex-direction: column;
       gap: 18px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
     }
 
     .settings-panel h3 {
-      font-size: 1.05rem;
+      font-size: 1.08rem;
       font-weight: 700;
-      letter-spacing: -0.01em;
       display: flex;
       align-items: center;
       gap: 10px;
@@ -1061,14 +1085,14 @@
     .category-toggle-list {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
     }
 
     .toggle-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px 16px;
+      padding: 12px 14px;
       background: rgba(0, 0, 0, 0.25);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-md);
@@ -1086,23 +1110,23 @@
     }
 
     .toggle-icon-wrap {
-      width: 32px;
-      height: 32px;
+      width: 34px;
+      height: 34px;
       border-radius: var(--radius-sm);
-      background: rgba(255, 255, 255, 0.05);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.05);
     }
 
     .toggle-info h4 {
       font-size: 0.86rem;
-      font-weight: 600;
+      font-weight: 700;
+      color: var(--text-primary);
     }
 
     .toggle-info p {
-      font-size: 0.72rem;
+      font-size: 0.74rem;
       color: var(--text-muted);
       margin-top: 2px;
     }
@@ -1113,7 +1137,7 @@
       display: inline-block;
       width: 44px;
       height: 24px;
-      cursor: pointer;
+      flex-shrink: 0;
     }
 
     .switch-label input {
@@ -1124,10 +1148,11 @@
 
     .slider {
       position: absolute;
+      cursor: pointer;
       inset: 0;
-      background-color: rgba(255, 255, 255, 0.12);
-      border-radius: var(--radius-full);
-      transition: 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      background-color: rgba(255, 255, 255, 0.15);
+      transition: .25s ease;
+      border-radius: 24px;
     }
 
     .slider:before {
@@ -1138,8 +1163,8 @@
       left: 3px;
       bottom: 3px;
       background-color: white;
+      transition: .25s ease;
       border-radius: 50%;
-      transition: 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     input:checked + .slider {
@@ -1180,16 +1205,16 @@
     .modal-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      background: rgba(0, 0, 0, 0.78);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 1000;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1);
       padding: 20px;
     }
 
@@ -1204,13 +1229,13 @@
       border-radius: var(--radius-xl);
       max-width: 680px;
       width: 100%;
-      padding: 30px;
+      padding: 28px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 18px;
       box-shadow: var(--shadow-lg);
       transform: scale(0.96) translateY(8px);
-      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
       max-height: 90vh;
       overflow-y: auto;
     }
@@ -1252,11 +1277,10 @@
     }
 
     .modal-close-btn:hover {
-      background: rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.14);
       color: var(--text-primary);
     }
 
-    /* Sub-tabs in Enrollment Modal */
     .modal-subtabs {
       display: flex;
       gap: 8px;
@@ -1286,10 +1310,9 @@
     .subtab-btn.active {
       background: var(--bg-surface-elevated);
       color: var(--text-primary);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.12);
     }
 
-    /* Terminal Box for PowerShell commands */
     .terminal-box {
       background: #030712;
       border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1298,7 +1321,6 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
-      position: relative;
     }
 
     .terminal-header {
@@ -1317,12 +1339,7 @@
       gap: 5px;
     }
 
-    .dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-    }
-
+    .dot { width: 9px; height: 9px; border-radius: 50%; }
     .dot-red { background: #ef4444; }
     .dot-yellow { background: #f59e0b; }
     .dot-green { background: #10b981; }
@@ -1336,7 +1353,7 @@
       user-select: all;
     }
 
-    /* Toast Container */
+    /* Toast Notifications */
     .toast-container {
       position: fixed;
       bottom: 24px;
@@ -1352,7 +1369,7 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 14px 18px;
+      padding: 13px 18px;
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-md);
@@ -1362,20 +1379,12 @@
       color: var(--text-primary);
       min-width: 320px;
       pointer-events: auto;
-      animation: toast-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation: toast-slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
-    .toast-item.success {
-      border-left: 4px solid var(--accent-emerald);
-    }
-
-    .toast-item.error {
-      border-left: 4px solid var(--accent-rose);
-    }
-
-    .toast-item.info {
-      border-left: 4px solid var(--accent-cyan);
-    }
+    .toast-item.success { border-left: 4px solid var(--accent-emerald); }
+    .toast-item.error { border-left: 4px solid var(--accent-rose); }
+    .toast-item.info { border-left: 4px solid var(--accent-cyan); }
 
     @keyframes toast-slide-in {
       from { transform: translateX(40px); opacity: 0; }
@@ -1386,16 +1395,16 @@
     .lightbox-modal {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.88);
+      background: rgba(0, 0, 0, 0.9);
       backdrop-filter: blur(16px);
       z-index: 2000;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 30px;
+      padding: 24px;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.25s ease;
+      transition: opacity 0.22s ease;
     }
 
     .lightbox-modal.open {
@@ -1409,12 +1418,11 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-      position: relative;
     }
 
     .lightbox-content img {
       max-width: 100%;
-      max-height: 82vh;
+      max-height: 80vh;
       border-radius: var(--radius-md);
       border: 1px solid var(--border-subtle);
       box-shadow: var(--shadow-lg);
@@ -1424,19 +1432,23 @@
     .lightbox-meta-row {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       color: var(--text-secondary);
       font-size: 0.84rem;
+      gap: 12px;
     }
 
-    /* Verification Test Bar */
+    /* Diagnostic Simulation Bar */
     .test-toolbar {
-      background: rgba(15, 23, 42, 0.5);
+      background: rgba(15, 23, 42, 0.55);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-lg);
       padding: 14px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
     }
 
     .test-toolbar-info {
@@ -1450,6 +1462,7 @@
     .test-buttons {
       display: flex;
       gap: 8px;
+      flex-wrap: wrap;
     }
 
     @media (max-width: 1100px) {
@@ -1466,7 +1479,7 @@
 
     @media (max-width: 680px) {
       .app-shell {
-        padding: 16px;
+        padding: 14px;
       }
       .metrics-grid {
         grid-template-columns: 1fr;
@@ -1479,6 +1492,9 @@
       .header-actions {
         width: 100%;
         justify-content: space-between;
+      }
+      .card-action-bar {
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -1505,14 +1521,19 @@
           <span id="hubStatusText">HUB CONNECTED</span>
         </div>
 
-        <button class="btn btn-danger btn-sm" onclick="lockAllDevicesPrompt()">
-          <i data-lucide="lock" style="width: 15px; height: 15px;"></i>
-          Lock All Devices
+        <button class="btn btn-secondary btn-sm" onclick="refreshAllData()" id="refreshBtn" title="Sync live status across all devices">
+          <i data-lucide="rotate-cw" style="width: 15px; height: 15px;" id="refreshIcon"></i>
+          Sync
         </button>
 
-        <button class="btn btn-primary" onclick="openEnrollModal()">
-          <i data-lucide="plus-circle" style="width: 17px; height: 17px;"></i>
-          Auto-Enroll Real Device
+        <button class="btn btn-danger btn-sm" onclick="lockAllDevicesPrompt()">
+          <i data-lucide="lock" style="width: 15px; height: 15px;"></i>
+          Lock Fleet
+        </button>
+
+        <button class="btn btn-primary btn-sm" onclick="openEnrollModal()">
+          <i data-lucide="plus-circle" style="width: 16px; height: 16px;"></i>
+          Auto-Enroll Device
         </button>
       </div>
     </header>
@@ -1550,8 +1571,8 @@
         </div>
         <div class="metric-value" id="statTotalDevices">0</div>
         <div class="metric-footer">
-          <span class="metric-pill-sub pill-blue">SQLite Synced</span>
-          <span>Zero-Touch Onboarding</span>
+          <span class="metric-pill-sub pill-blue">Multi-Device</span>
+          <span>Zero-Touch Setup</span>
         </div>
       </div>
 
@@ -1565,7 +1586,7 @@
         <div class="metric-value" id="statOnlineDevices" style="color: var(--accent-emerald);">0</div>
         <div class="metric-footer">
           <span class="metric-pill-sub pill-green">Watchdog 45s</span>
-          <span>Live WebSocket Feed</span>
+          <span>WebSocket Stream</span>
         </div>
       </div>
 
@@ -1578,8 +1599,8 @@
         </div>
         <div class="metric-value" id="statDnsBlocks" style="color: var(--accent-cyan);">0</div>
         <div class="metric-footer">
-          <span class="metric-pill-sub pill-blue">Port 5353</span>
-          <span>Cloudflare Family Filter</span>
+          <span class="metric-pill-sub pill-blue">Sinkhole DNS</span>
+          <span>Content Firewall</span>
         </div>
       </div>
 
@@ -1592,8 +1613,8 @@
         </div>
         <div class="metric-value" id="statVpnAlarms" style="color: var(--accent-rose);">0</div>
         <div class="metric-footer">
-          <span class="metric-pill-sub pill-rose">Zero Evasion</span>
-          <span>Hardware Adapter Audit</span>
+          <span class="metric-pill-sub pill-rose">Hardware Audit</span>
+          <span>Zero Bypass</span>
         </div>
       </div>
     </section>
@@ -1603,7 +1624,7 @@
       <div class="telemetry-header">
         <div class="telemetry-title">
           <i data-lucide="activity" style="width: 18px; height: 18px; color: var(--accent-emerald);"></i>
-          <h2>Live Telemetry & Activity Stream</h2>
+          <h2>Live Fleet Telemetry & Activity Stream</h2>
         </div>
         <div style="font-size: 0.74rem; color: var(--text-muted); font-family: var(--font-mono);">
           Real-time Event Ingestion Rate
@@ -1627,12 +1648,12 @@
             </h2>
             <div class="section-badges">
               <span class="badge-tag">UDP Discovery :5354</span>
-              <span class="badge-tag">Failover Enabled</span>
+              <span class="badge-tag">Active Watchdog</span>
             </div>
           </div>
 
           <div class="device-grid" id="devicesGrid">
-            <!-- Rendered dynamically -->
+            <!-- Dynamically populated -->
           </div>
         </div>
 
@@ -1653,7 +1674,7 @@
           </div>
 
           <div class="stream-feed" id="eventStreamFeed">
-            <!-- Events rendered dynamically -->
+            <!-- Events populated dynamically -->
           </div>
         </aside>
 
@@ -1667,19 +1688,39 @@
           <i data-lucide="camera" style="width: 20px; height: 20px; color: var(--accent-cyan);"></i>
           Visual Workstation Timeline
         </h2>
-        <div class="section-badges">
-          <span class="badge-tag">Encrypted Storage</span>
-          <span class="badge-tag">2-Min Interval</span>
+        <div class="section-badges" style="display: flex; gap: 8px; align-items: center;">
+          <select id="snapshotFilterDevice" class="input-field" style="width: auto; padding: 4px 10px; font-size: 0.74rem;" onchange="loadSnapshots()">
+            <option value="">All Devices</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" onclick="loadSnapshots()">
+            <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+            Refresh
+          </button>
         </div>
       </div>
 
       <div class="snapshots-grid" id="snapshotsGrid">
-        <!-- Rendered dynamically -->
+        <!-- Snapshots populated dynamically -->
       </div>
     </section>
 
     <!-- TAB 3: POLICIES & CURFEWS -->
     <section class="tab-view-container" id="viewRules">
+      <div style="background: var(--bg-glass-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 16px 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Configure Target:</label>
+          <select id="rulesDeviceSelector" class="input-field" style="width: auto; min-width: 240px;" onchange="onRulesDeviceChanged()">
+            <option value="ALL">Apply to All Fleet Devices</option>
+          </select>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-secondary btn-sm" onclick="applyPolicyPreset('strict')">🛡️ Strict Preset</button>
+          <button class="btn btn-secondary btn-sm" onclick="applyPolicyPreset('balanced')">⚖️ Balanced Preset</button>
+          <button class="btn btn-secondary btn-sm" onclick="applyPolicyPreset('relaxed')">🕊️ Relaxed Preset</button>
+        </div>
+      </div>
+
       <div class="rules-deck">
 
         <!-- DNS Category Filters -->
@@ -1689,7 +1730,7 @@
             Content Protection Categories
           </h3>
           <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: -6px;">
-            Enforce real-time packet-level DNS sinkholing across all enrolled devices.
+            Enforce real-time packet-level DNS sinkholing on the selected device.
           </p>
 
           <div class="category-toggle-list">
@@ -1782,7 +1823,7 @@
               </div>
             </div>
             <label class="switch-label">
-              <input type="checkbox" id="bedtimeToggle">
+              <input type="checkbox" id="bedtimeToggle" checked>
               <span class="slider"></span>
             </label>
           </div>
@@ -1816,7 +1857,7 @@
     <div class="test-toolbar">
       <div class="test-toolbar-info">
         <i data-lucide="terminal" style="width: 18px; height: 18px; color: var(--accent-emerald);"></i>
-        <span><strong>Live Hub Engine:</strong> FastAPI Lifespan + SQLite Persistence + Async UDP Discovery + DNS Sinkhole Active</span>
+        <span><strong>Live Engine:</strong> FastAPI Engine + SQLite/PostgreSQL Dual Mode + UDP Port 5354 + Real-time Shield</span>
       </div>
       <div class="test-buttons">
         <button class="btn btn-secondary btn-sm" onclick="triggerSimulatedHeartbeat()">
@@ -1976,7 +2017,13 @@
       <img id="lightboxImg" src="" alt="Screen Preview" />
       <div class="lightbox-meta-row">
         <span id="lightboxMetaText" style="font-family: var(--font-mono); font-weight: 600;"></span>
-        <button class="btn btn-secondary btn-sm" onclick="closeLightbox()">Close Preview</button>
+        <div style="display: flex; gap: 10px;">
+          <a id="lightboxDownloadBtn" href="#" download="screenshot.jpg" class="btn btn-secondary btn-sm" target="_blank">
+            <i data-lucide="download" style="width: 14px; height: 14px;"></i>
+            Download
+          </a>
+          <button class="btn btn-secondary btn-sm" onclick="closeLightbox()">Close Preview</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1984,7 +2031,7 @@
   <!-- FLOATING TOASTS -->
   <div class="toast-container" id="toastContainer"></div>
 
-  <!-- APPLICATION LOGIC & LIVE STREAM ENGINE -->
+  <!-- APPLICATION LOGIC -->
   <script>
     // State
     let devices = [];
@@ -2003,7 +2050,6 @@
       vpnAttempts: 0
     };
 
-    // Telemetry time-series data buffer (last 15 intervals)
     const telemetryData = {
       labels: Array.from({length: 12}, (_, i) => `-${(11 - i) * 10}s`),
       heartbeats: [0, 0, 1, 1, 1, 1, 2, 2, 1, 2, 1, 2],
@@ -2024,6 +2070,15 @@
       fetchInitialData();
       connectWebSocket();
       fetchEnrollmentInfo();
+
+      // Keyboard ESC closes modals
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          closeLightbox();
+          closeEnrollModal();
+          closePushModal();
+        }
+      });
     });
 
     function initIcons() {
@@ -2048,10 +2103,10 @@
           labels: telemetryData.labels,
           datasets: [
             {
-              label: 'Heartbeats / Safe Traffic',
+              label: 'Heartbeats / Active Shield',
               data: telemetryData.heartbeats,
               borderColor: '#10b981',
-              backgroundColor: 'rgba(16, 185, 129, 0.08)',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
               borderWidth: 2,
               fill: true,
               tension: 0.35,
@@ -2062,7 +2117,7 @@
               label: 'Threat Drops & Alarms',
               data: telemetryData.blocks,
               borderColor: '#f43f5e',
-              backgroundColor: 'rgba(244, 63, 94, 0.08)',
+              backgroundColor: 'rgba(244, 63, 94, 0.1)',
               borderWidth: 2,
               fill: true,
               tension: 0.35,
@@ -2132,6 +2187,27 @@
       telemetryChart.update('none');
     }, 10000);
 
+    // Refresh all data
+    async function refreshAllData() {
+      const icon = document.getElementById('refreshIcon');
+      if (icon) icon.classList.add('spin-icon');
+
+      try {
+        await Promise.all([
+          fetchInitialData(),
+          fetchEnrollmentInfo(),
+          loadSnapshots()
+        ]);
+        showToast("Fleet telemetry synced successfully", "success");
+      } catch (e) {
+        showToast("Error syncing data: " + e.message, "error");
+      } finally {
+        setTimeout(() => {
+          if (icon) icon.classList.remove('spin-icon');
+        }, 600);
+      }
+    }
+
     // Data Loaders
     async function fetchInitialData() {
       try {
@@ -2140,9 +2216,14 @@
           fetch(`${API_BASE}/events?limit=40`)
         ]);
 
-        if (devRes.ok) devices = await devRes.json();
+        if (devRes.ok) {
+          devices = await devRes.json();
+          updateDeviceSelectors();
+        }
         if (evtRes.ok) {
           events = await evtRes.json();
+          stats.dnsBlocks = 0;
+          stats.vpnAttempts = 0;
           events.forEach(e => {
             if (e.type === 'dns_block') stats.dnsBlocks++;
             if (e.type === 'vpn_attempt') stats.vpnAttempts++;
@@ -2155,6 +2236,26 @@
         initIcons();
       } catch (err) {
         console.warn("[Himaya] REST initial load error:", err);
+      }
+    }
+
+    function updateDeviceSelectors() {
+      // Snapshot filter
+      const snapSel = document.getElementById('snapshotFilterDevice');
+      if (snapSel) {
+        const currentVal = snapSel.value;
+        snapSel.innerHTML = '<option value="">All Devices</option>' + devices.map(d => 
+          `<option value="${escapeHtml(d.device_id)}" ${d.device_id === currentVal ? 'selected' : ''}>${escapeHtml(d.name || d.device_id)}</option>`
+        ).join('');
+      }
+
+      // Rules device selector
+      const rulesSel = document.getElementById('rulesDeviceSelector');
+      if (rulesSel) {
+        const currentVal = rulesSel.value;
+        rulesSel.innerHTML = '<option value="ALL">Apply to All Fleet Devices</option>' + devices.map(d => 
+          `<option value="${escapeHtml(d.device_id)}" ${d.device_id === currentVal ? 'selected' : ''}>${escapeHtml(d.name || d.device_id)} (${escapeHtml(d.platform || 'pc')})</option>`
+        ).join('');
       }
     }
 
@@ -2182,14 +2283,16 @@
       ws.onopen = () => {
         pill.classList.remove('disconnected');
         text.textContent = 'HUB CONNECTED';
-        showToast("Connected to live security stream", "success");
       };
 
       ws.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data);
           if (payload.type === 'snapshot') {
-            if (payload.devices) devices = payload.devices;
+            if (payload.devices) {
+              devices = payload.devices;
+              updateDeviceSelectors();
+            }
             renderDevices();
             updateStatsCounters();
           } else {
@@ -2218,11 +2321,11 @@
       if (evt.type === 'vpn_attempt') {
         stats.vpnAttempts++;
         recordTelemetryPoint('vpn_attempt');
-        showToast(`Security Alert: VPN evasion on ${evt.device_id}!`, 'error');
+        showToast(`Security Alert: VPN evasion detected on ${evt.device_id}!`, 'error');
       }
       if (evt.type === 'screenshot') {
         recordTelemetryPoint('heartbeat');
-        showToast(`Screen snapshot received from ${evt.device_id}`, 'info');
+        showToast(`Screen snapshot captured from ${evt.device_id}`, 'info');
         loadSnapshots();
       }
       if (evt.type === 'heartbeat') {
@@ -2237,9 +2340,23 @@
           if (targetDev.status !== 'locked' && targetDev.status !== 'paused') {
             targetDev.status = 'online';
           }
-        } else if (evt.type === 'device_locked') targetDev.status = 'locked';
-        else if (evt.type === 'device_unlocked') targetDev.status = 'online';
-        else if (evt.type === 'device_went_dark') targetDev.status = 'offline';
+        } else if (evt.type === 'device_locked') {
+          targetDev.status = 'locked';
+        } else if (evt.type === 'device_unlocked') {
+          targetDev.status = 'online';
+        } else if (evt.type === 'device_went_dark') {
+          targetDev.status = 'offline';
+        }
+      }
+
+      // Check if device was deleted or paired
+      if (evt.type === 'policy_sync' && evt.data) {
+        if (evt.data.action === 'device_deleted') {
+          devices = devices.filter(d => d.device_id !== evt.data.device_id);
+          updateDeviceSelectors();
+        } else if (evt.data.action === 'device_paired') {
+          fetchInitialData();
+        }
       }
 
       renderDevices();
@@ -2262,9 +2379,9 @@
       if (!devices || devices.length === 0) {
         grid.innerHTML = `
           <div style="grid-column: 1/-1; padding: 48px; text-align: center; background: var(--bg-glass-card); border-radius: var(--radius-lg); border: 1px dashed var(--border-subtle);">
-            <i data-lucide="shield-question" style="width: 36px; height: 36px; color: var(--text-muted); margin: 0 auto 12px auto; display: block;"></i>
-            <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-primary);">No Devices Enrolled Yet</h4>
-            <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 4px;">Click the button below to auto-enroll your first PC or smartphone.</p>
+            <i data-lucide="shield-question" style="width: 38px; height: 38px; color: var(--text-muted); margin: 0 auto 12px auto; display: block;"></i>
+            <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary);">No Devices Enrolled Yet</h4>
+            <p style="color: var(--text-muted); font-size: 0.84rem; margin-top: 4px;">Click the button below to auto-enroll your first PC or smartphone.</p>
             <button class="btn btn-primary" onclick="openEnrollModal()" style="margin-top: 16px;">
               <i data-lucide="plus-circle" style="width: 16px; height: 16px;"></i>
               Auto-Enroll First Device
@@ -2283,10 +2400,9 @@
         const lastSeenText = d.last_seen ? formatTimeAgo(d.last_seen) : 'Never seen';
         const platformIsWin = (d.platform || '').toLowerCase().includes('win');
 
-        // Brand SVG icons
         const iconSvg = platformIsWin 
-          ? `<svg viewBox="0 0 88 88" width="20" height="20" fill="currentColor"><path d="M0 12.402l35.687-4.86.016 34.423-35.67.203zm35.67 33.529l.028 34.453L.028 75.48.01 45.719zm4.326-39.027L87.914 0v41.527l-47.918.378zm47.918 43.665l-.014 41.795-47.886-6.734V46.06z"/></svg>`
-          : `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993 0 .5511-.4483.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5902 8.4116 13.8533 8.0805 12 8.0805c-1.8534 0-3.5902.3311-5.1367.8692L4.841 5.4467a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396"/></svg>`;
+          ? `<svg viewBox="0 0 88 88" width="22" height="22" fill="currentColor"><path d="M0 12.402l35.687-4.86.016 34.423-35.67.203zm35.67 33.529l.028 34.453L.028 75.48.01 45.719zm4.326-39.027L87.914 0v41.527l-47.918.378zm47.918 43.665l-.014 41.795-47.886-6.734V46.06z"/></svg>`
+          : `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993 0 .5511-.4483.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5902 8.4116 13.8533 8.0805 12 8.0805c-1.8534 0-3.5902.3311-5.1367.8692L4.841 5.4467a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396"/></svg>`;
 
         return `
           <div class="device-card ${statusClass}" id="card-${d.device_id}">
@@ -2296,7 +2412,7 @@
                   ${iconSvg}
                 </div>
                 <div class="device-title-area">
-                  <h3>${escapeHtml(d.name)}</h3>
+                  <h3>${escapeHtml(d.name || d.device_id)}</h3>
                   <div class="device-sub-tags">
                     <span class="role-badge">${escapeHtml(d.owner_type || 'child')}</span>
                     <span class="platform-badge">${(d.platform || 'WINDOWS').toUpperCase()}</span>
@@ -2319,7 +2435,10 @@
               </div>
               <div class="meta-row">
                 <span class="meta-key">Network IP</span>
-                <span class="meta-val">${d.ip || '192.168.1.7'}</span>
+                <span class="meta-val copyable" onclick="copyText('${d.ip || '192.168.1.7'}')" title="Click to copy">
+                  ${d.ip || '192.168.1.7'}
+                  <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
+                </span>
               </div>
               <div class="meta-row">
                 <span class="meta-key">Last Heartbeat</span>
@@ -2338,38 +2457,50 @@
               </span>
               <span class="guard-chip ${isOnline ? 'active' : ''}">
                 <i data-lucide="camera" style="width: 12px; height: 12px;"></i>
-                Screen Snapshots
+                Snapshots
               </span>
             </div>
 
             <div class="card-action-bar">
               ${isLocked ? `
                 <button class="action-btn unlock-trigger" onclick="dispatchAction('${d.device_id}', 'unlock')">
-                  <i data-lucide="unlock" style="width: 14px; height: 14px;"></i>
+                  <i data-lucide="unlock" style="width: 14px; height: 14px; color: var(--accent-emerald);"></i>
                   Unlock
                 </button>
               ` : `
                 <button class="action-btn lock-trigger" onclick="dispatchAction('${d.device_id}', 'lock')">
-                  <i data-lucide="lock" style="width: 14px; height: 14px;"></i>
+                  <i data-lucide="lock" style="width: 14px; height: 14px; color: var(--accent-rose);"></i>
                   Lock Screen
                 </button>
               `}
 
               ${isPaused ? `
                 <button class="action-btn resume-trigger" onclick="dispatchAction('${d.device_id}', 'unpause')">
-                  <i data-lucide="play" style="width: 14px; height: 14px;"></i>
+                  <i data-lucide="play" style="width: 14px; height: 14px; color: var(--accent-cyan);"></i>
                   Resume Net
                 </button>
               ` : `
                 <button class="action-btn pause-trigger" onclick="dispatchAction('${d.device_id}', 'pause')">
-                  <i data-lucide="pause" style="width: 14px; height: 14px;"></i>
+                  <i data-lucide="pause" style="width: 14px; height: 14px; color: var(--accent-amber);"></i>
                   Pause Net
                 </button>
               `}
 
-              <button class="action-btn" onclick="openPushModal('${d.device_id}', '${escapeHtml(d.name)}')">
+              <button class="action-btn" onclick="openPushModal('${d.device_id}', '${escapeHtml(d.name || d.device_id)}')">
                 <i data-lucide="message-square" style="width: 14px; height: 14px;"></i>
                 Send Alert
+              </button>
+            </div>
+
+            <div class="card-action-secondary">
+              <button class="action-btn btn-sm" onclick="dispatchAction('${d.device_id}', 'snapshot')" title="Capture screen immediately">
+                <i data-lucide="camera" style="width: 13px; height: 13px;"></i>
+                Instant Screen
+              </button>
+
+              <button class="action-btn btn-sm" onclick="confirmDeleteDevice('${d.device_id}', '${escapeHtml(d.name || d.device_id)}')" style="color: var(--accent-rose); border-color: rgba(244, 63, 94, 0.2);" title="Remove device from fleet">
+                <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i>
+                Remove
               </button>
             </div>
           </div>
@@ -2400,7 +2531,7 @@
         return;
       }
 
-      container.innerHTML = filtered.slice(0, 30).map(e => {
+      container.innerHTML = filtered.slice(0, 35).map(e => {
         let iconName = 'activity';
         let typeClass = 'heartbeat';
         let detail = '';
@@ -2432,7 +2563,7 @@
         } else if (e.type === 'device_went_dark') {
           iconName = 'moon';
           typeClass = 'vpn';
-          detail = 'Device missed 45s heartbeat window (offline or disconnected)';
+          detail = 'Device missed 45s heartbeat window (offline)';
         } else {
           detail = typeof e.data === 'object' ? JSON.stringify(e.data) : String(e.data || '');
         }
@@ -2466,15 +2597,18 @@
     // Snapshots Loader
     async function loadSnapshots() {
       const grid = document.getElementById('snapshotsGrid');
+      const devFilter = document.getElementById('snapshotFilterDevice')?.value || '';
+      const url = devFilter ? `${API_BASE}/snapshots?device_id=${encodeURIComponent(devFilter)}` : `${API_BASE}/snapshots`;
+
       try {
-        const res = await fetch(`${API_BASE}/snapshots`);
+        const res = await fetch(url);
         if (res.ok) {
           snapshots = await res.json();
           if (snapshots.length === 0) {
             grid.innerHTML = `
-              <div style="grid-column: 1/-1; padding: 48px; text-align: center; color: var(--text-muted);">
+              <div style="grid-column: 1/-1; padding: 48px; text-align: center; color: var(--text-muted); background: var(--bg-glass-card); border-radius: var(--radius-lg); border: 1px dashed var(--border-subtle);">
                 <i data-lucide="camera-off" style="width: 32px; height: 32px; margin: 0 auto 10px auto; display: block; opacity: 0.5;"></i>
-                <p>No screen snapshots recorded yet. Scheduled captures appear automatically when the agent runs.</p>
+                <p style="font-size: 0.88rem;">No screen snapshots recorded yet. Scheduled captures appear automatically when the agent runs.</p>
               </div>
             `;
             initIcons();
@@ -2518,6 +2652,7 @@
       } else if (tab === 'rules') {
         document.getElementById('tabBtnRules').classList.add('active');
         document.getElementById('viewRules').classList.add('active');
+        onRulesDeviceChanged();
       }
     }
 
@@ -2551,10 +2686,7 @@
       if (!enrollmentInfo) return;
       const targetObj = enrollmentInfo[enrollTarget] || enrollmentInfo.lan;
       
-      // Update Windows PowerShell Command
       document.getElementById('enrollCommandText').textContent = targetObj.windows_cmd;
-      
-      // Update Android QR & Mobile URL
       const qrTargetParam = enrollTarget === 'lan' ? '?target=lan' : '?target=internet';
       document.getElementById('enrollQrImg').src = `/enroll/qr${qrTargetParam}&t=${Date.now()}`;
       document.getElementById('enrollMobileUrlText').textContent = targetObj.mobile_url;
@@ -2564,7 +2696,7 @@
       const text = document.getElementById('enrollCommandText').textContent.trim();
       navigator.clipboard.writeText(text);
       const btn = document.getElementById('copyCmdBtnText');
-      btn.textContent = 'Command Copied to Clipboard!';
+      btn.textContent = 'Command Copied!';
       showToast("PowerShell command copied to clipboard", "success");
       setTimeout(() => { btn.textContent = 'Copy 1-Click Command'; }, 2500);
     }
@@ -2579,7 +2711,7 @@
           body: JSON.stringify({ public_url: val })
         });
         if (res.ok) {
-          showToast("Remote Cloudflare/Public URL persisted", "success");
+          showToast("Remote Public URL saved successfully", "success");
           fetchEnrollmentInfo();
         }
       } catch (e) {
@@ -2589,6 +2721,16 @@
 
     // Actions & Remote Commands
     async function dispatchAction(deviceId, action, payload = {}) {
+      // Optimistic status update on UI
+      const targetDev = devices.find(d => d.device_id === deviceId);
+      if (targetDev) {
+        if (action === 'lock') targetDev.status = 'locked';
+        else if (action === 'unlock') targetDev.status = 'online';
+        else if (action === 'pause') targetDev.status = 'paused';
+        else if (action === 'unpause') targetDev.status = 'online';
+        renderDevices();
+      }
+
       try {
         const res = await fetch(`${API_BASE}/admin/${deviceId}/action`, {
           method: 'POST',
@@ -2596,17 +2738,43 @@
           body: JSON.stringify({ action, payload })
         });
         if (res.ok) {
+          const data = await res.json();
+          if (targetDev && data.device_status) {
+            targetDev.status = data.device_status;
+            renderDevices();
+          }
           showToast(`Dispatched '${action}' command to ${deviceId}`, "success");
         } else {
           showToast(`Error dispatching action: HTTP ${res.status}`, "error");
+          fetchInitialData();
         }
       } catch (e) {
         showToast(`Failed to dispatch action: ${e.message}`, "error");
+        fetchInitialData();
+      }
+    }
+
+    async function confirmDeleteDevice(deviceId, name) {
+      if (confirm(`Are you sure you want to remove device "${name}" (${deviceId}) from Himaya?`)) {
+        try {
+          const res = await fetch(`${API_BASE}/devices/${deviceId}`, { method: 'DELETE' });
+          if (res.ok) {
+            devices = devices.filter(d => d.device_id !== deviceId);
+            renderDevices();
+            updateStatsCounters();
+            updateDeviceSelectors();
+            showToast(`Device "${name}" removed from fleet`, "info");
+          } else {
+            showToast("Failed to remove device: HTTP " + res.status, "error");
+          }
+        } catch (e) {
+          showToast("Error removing device: " + e.message, "error");
+        }
       }
     }
 
     function lockAllDevicesPrompt() {
-      if (confirm("Are you sure you want to trigger immediate screen lockdown across ALL managed children devices?")) {
+      if (confirm("Are you sure you want to trigger immediate screen lockdown across ALL managed fleet devices?")) {
         devices.forEach(d => dispatchAction(d.device_id, 'lock'));
       }
     }
@@ -2635,6 +2803,7 @@
     function openLightbox(url, deviceId, timestamp) {
       document.getElementById('lightboxImg').src = url;
       document.getElementById('lightboxMetaText').textContent = `Device: ${deviceId} • Captured: ${new Date(timestamp).toLocaleString()}`;
+      document.getElementById('lightboxDownloadBtn').href = url;
       document.getElementById('lightboxModal').classList.add('open');
     }
 
@@ -2642,7 +2811,66 @@
       document.getElementById('lightboxModal').classList.remove('open');
     }
 
-    // Rules Policy Saving
+    // Rules Policy Loading & Saving
+    async function onRulesDeviceChanged() {
+      const selVal = document.getElementById('rulesDeviceSelector')?.value || 'ALL';
+      let targetDevId = selVal === 'ALL' ? (devices[0]?.device_id || null) : selVal;
+
+      if (!targetDevId) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/rules/${targetDevId}`);
+        if (res.ok) {
+          const rules = await res.json();
+          const cats = rules.blocked_categories || [];
+          document.getElementById('ruleCatAdult').checked = cats.includes('adult');
+          document.getElementById('ruleCatGambling').checked = cats.includes('gambling');
+          document.getElementById('ruleCatSocial').checked = cats.includes('social');
+          document.getElementById('ruleCatGaming').checked = cats.includes('gaming');
+
+          document.getElementById('bedtimeToggle').checked = bool(rules.bedtime_enabled);
+          if (rules.bedtime_start) document.getElementById('bedtimeStart').value = rules.bedtime_start;
+          if (rules.bedtime_end) document.getElementById('bedtimeEnd').value = rules.bedtime_end;
+
+          const domains = rules.blocked_domains || [];
+          document.getElementById('customDomainsTextarea').value = domains.join('\n');
+        }
+      } catch (e) {
+        console.warn("[Himaya] Rules fetch note:", e);
+      }
+    }
+
+    function applyPolicyPreset(preset) {
+      if (preset === 'strict') {
+        document.getElementById('ruleCatAdult').checked = true;
+        document.getElementById('ruleCatGambling').checked = true;
+        document.getElementById('ruleCatSocial').checked = true;
+        document.getElementById('ruleCatGaming').checked = true;
+        document.getElementById('bedtimeToggle').checked = true;
+        document.getElementById('bedtimeStart').value = '20:30';
+        document.getElementById('bedtimeEnd').value = '07:30';
+        document.getElementById('customDomainsTextarea').value = 'tiktok.com\nomegle.com\nkick.com\ntwitch.tv\nroblox.com';
+        showToast("Applied Strict Child Protection preset", "info");
+      } else if (preset === 'balanced') {
+        document.getElementById('ruleCatAdult').checked = true;
+        document.getElementById('ruleCatGambling').checked = true;
+        document.getElementById('ruleCatSocial').checked = false;
+        document.getElementById('ruleCatGaming').checked = false;
+        document.getElementById('bedtimeToggle').checked = true;
+        document.getElementById('bedtimeStart').value = '21:30';
+        document.getElementById('bedtimeEnd').value = '07:00';
+        document.getElementById('customDomainsTextarea').value = 'tiktok.com\nomegle.com';
+        showToast("Applied Balanced Family preset", "info");
+      } else if (preset === 'relaxed') {
+        document.getElementById('ruleCatAdult').checked = true;
+        document.getElementById('ruleCatGambling').checked = true;
+        document.getElementById('ruleCatSocial').checked = false;
+        document.getElementById('ruleCatGaming').checked = false;
+        document.getElementById('bedtimeToggle').checked = false;
+        showToast("Applied Relaxed Protection preset", "info");
+      }
+    }
+
     async function savePolicyRules() {
       const blockedCats = [];
       if (document.getElementById('ruleCatAdult').checked) blockedCats.push('adult');
@@ -2663,7 +2891,15 @@
         bedtime_end: document.getElementById('bedtimeEnd').value
       };
 
-      for (const dev of devices) {
+      const selVal = document.getElementById('rulesDeviceSelector')?.value || 'ALL';
+      const targets = selVal === 'ALL' ? devices : devices.filter(d => d.device_id === selVal);
+
+      if (targets.length === 0) {
+        showToast("No active devices to apply policy to", "info");
+        return;
+      }
+
+      for (const dev of targets) {
         await fetch(`${API_BASE}/rules/${dev.device_id}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2671,7 +2907,7 @@
         });
       }
 
-      showToast("Policy rules updated and deployed to all devices", "success");
+      showToast(`Policy rules deployed to ${targets.length} device(s)`, "success");
     }
 
     // Diagnostic Simulation Functions
@@ -2679,16 +2915,13 @@
       if (devices.length === 0) return;
       const target = devices[0].device_id;
       fetch(`${API_BASE}/agents/${target}/heartbeat`, { method: 'POST' });
-      showToast(`Heartbeat simulated for ${target}`, "info");
+      showToast(`Heartbeat pulse simulated for ${target}`, "info");
     }
 
     function triggerSimulatedDnsBlock() {
       if (devices.length === 0) return;
       const target = devices[0].device_id;
-      // Triggers DNS block event via WebSocket directly or REST
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'test_dns_block', device_id: target }));
-      }
+      fetch(`${API_BASE}/agents/${target}/dns-block?host=threat-ads-tracking.com`, { method: 'POST' });
       showToast(`DNS threat blocked for ${target}`, "info");
     }
 
@@ -2728,6 +2961,10 @@
     function copyText(str) {
       navigator.clipboard.writeText(str);
       showToast(`Copied "${str}" to clipboard`, "info");
+    }
+
+    function bool(val) {
+      return val === true || val === 1 || val === '1' || val === 'true';
     }
 
     function escapeHtml(str) {

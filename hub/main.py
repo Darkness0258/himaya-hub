@@ -25,7 +25,19 @@ from models import Device, DeviceCreate, DeviceStatus, Event, EventType, RemoteA
 DATA_DIR = Path(__file__).parent / "data"
 SNAPSHOTS_DIR = DATA_DIR / "snapshots"
 STATIC_DIR = Path(__file__).parent / "static"
-WINDOWS_AGENT_PATH = Path(__file__).parent.parent / "agent-windows" / "himaya_windows_agent.py"
+def get_windows_agent_path() -> Path:
+    candidates = [
+        Path(__file__).parent / "himaya_windows_agent.py",
+        Path(__file__).parent / "agent-windows" / "himaya_windows_agent.py",
+        Path(__file__).parent.parent / "agent-windows" / "himaya_windows_agent.py",
+    ]
+    for c in candidates:
+        if c.exists():
+            return c
+    return candidates[0]
+
+WINDOWS_AGENT_PATH = get_windows_agent_path()
+
 
 SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -406,9 +418,10 @@ Write-Host "========================================================" -Foregroun
 
 @app.get("/enroll/win/agent.py")
 async def get_windows_agent_file():
-    if not WINDOWS_AGENT_PATH.exists():
+    agent_path = get_windows_agent_path()
+    if not agent_path.exists():
         raise HTTPException(status_code=404, detail="Agent script not found")
-    return FileResponse(WINDOWS_AGENT_PATH, media_type="text/x-python")
+    return FileResponse(agent_path, media_type="text/x-python")
 
 
 @app.get("/enroll/mobile", response_class=HTMLResponse)

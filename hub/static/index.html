@@ -1902,6 +1902,12 @@
         </button>
       </div>
 
+      <!-- Cloud Server Notice Banner -->
+      <div id="cloudEnrollBanner" style="display: none; background: rgba(6, 182, 212, 0.12); border: 1px solid rgba(6, 182, 212, 0.28); border-radius: var(--radius-md); padding: 10px 14px; font-size: 0.78rem; color: #38bdf8; display: flex; align-items: center; gap: 8px;">
+        <i data-lucide="cloud" style="width: 16px; height: 16px; flex-shrink: 0;"></i>
+        <span><b>Cloud Mode (Render):</b> Devices anywhere (home Wi-Fi or 4G/5G) connect directly via your secure HTTPS address.</span>
+      </div>
+
       <!-- Platform Selector -->
       <div class="modal-subtabs">
         <button class="subtab-btn active" id="subtabWin" onclick="switchEnrollPlatform('windows')">
@@ -2659,6 +2665,10 @@
     // Modal Operations
     function openEnrollModal() {
       document.getElementById('enrollModal').classList.add('open');
+      const isCloud = window.location.protocol === 'https:' || window.location.hostname.includes('onrender.com');
+      if (isCloud) {
+        switchEnrollTarget('internet');
+      }
       fetchEnrollmentInfo();
     }
 
@@ -2684,12 +2694,37 @@
 
     function updateEnrollmentDisplay() {
       if (!enrollmentInfo) return;
-      const targetObj = enrollmentInfo[enrollTarget] || enrollmentInfo.lan;
+      const isCloud = enrollmentInfo.is_cloud || window.location.protocol === 'https:' || window.location.hostname.includes('onrender.com');
       
+      const banner = document.getElementById('cloudEnrollBanner');
+      if (banner) banner.style.display = isCloud ? 'flex' : 'none';
+
+      // If running on cloud, both tabs safely use the reachable internet HTTPS URL
+      const targetObj = (isCloud && enrollTarget === 'lan') 
+        ? (enrollmentInfo.internet || enrollmentInfo.lan)
+        : (enrollmentInfo[enrollTarget] || enrollmentInfo.internet || enrollmentInfo.lan);
+
+      if (!targetObj) return;
+
       document.getElementById('enrollCommandText').textContent = targetObj.windows_cmd;
-      const qrTargetParam = enrollTarget === 'lan' ? '?target=lan' : '?target=internet';
-      document.getElementById('enrollQrImg').src = `/enroll/qr${qrTargetParam}&t=${Date.now()}`;
-      document.getElementById('enrollMobileUrlText').textContent = targetObj.mobile_url;
+      const qrTargetParam = isCloud ? '?target=internet' : (enrollTarget === 'lan' ? '?target=lan' : '?target=internet');
+      const qrHubParam = targetObj.hub_url ? `&hub_url=${encodeURIComponent(targetObj.hub_url)}` : '';
+      document.getElementById('enrollQrImg').src = `/enroll/qr${qrTargetParam}${qrHubParam}&t=${Date.now()}`;
+      
+      const mobileUrlElem = document.getElementById('enrollMobileUrlText');
+      if (mobileUrlElem) {
+        mobileUrlElem.innerHTML = `
+          <div style="display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;">
+            <a href="${escapeHtml(targetObj.mobile_url)}" target="_blank" style="color: var(--accent-cyan); text-decoration: underline; font-family: var(--font-mono); font-size: 0.8rem; word-break: break-all;">
+              ${escapeHtml(targetObj.mobile_url)}
+            </a>
+            <button class="action-btn btn-sm" onclick="copyText('${escapeHtml(targetObj.mobile_url)}')" style="padding: 3px 8px; font-size: 0.72rem; cursor: pointer;">
+              <i data-lucide="copy" style="width: 12px; height: 12px;"></i> Copy Link
+            </button>
+          </div>
+        `;
+        initIcons();
+      }
     }
 
     function copyEnrollCommand() {

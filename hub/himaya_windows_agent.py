@@ -215,6 +215,8 @@ class WindowsAgent:
     def execute_command(self, action: str, payload: dict):
         if action == "lock":
             lock_windows_workstation()
+        elif action == "unlock":
+            show_windows_notification("Device Unlocked", "Workstation session has been unlocked by parent.")
         elif action == "push_notification":
             msg = payload.get("message", "Notice from parent")
             show_windows_notification("Message from Parent", msg)
@@ -222,6 +224,9 @@ class WindowsAgent:
             show_windows_notification("Internet Paused", "Your internet access has been paused by parent.")
         elif action in ("unpause", "unblock_internet"):
             show_windows_notification("Internet Restored", "Your internet access has been restored.")
+        elif action in ("snapshot", "take_snapshot", "capture_screen"):
+            print("[Agent] Triggering instant on-demand screenshot requested by parent...")
+            self.capture_and_upload_snapshot()
         elif action == "wipe":
             show_windows_notification("SECURITY ALERT", "Remote wipe requested by administrator.")
 

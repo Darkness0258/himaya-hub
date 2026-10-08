@@ -28,7 +28,7 @@ if ENV_FILE.exists():
                 if line and not line.startswith("#") and "=" in line:
                     k, v = line.split("=", 1)
                     k, v = k.strip(), v.strip().strip('"').strip("'")
-                    if k not in os.environ:
+                    if not os.environ.get(k):
                         os.environ[k] = v
     except Exception:
         pass
@@ -78,17 +78,19 @@ class CursorWrapper:
             sql_clean = sql.strip().rstrip(";").strip()
             # If INSERT into a table with serial ID, capture generated ID
             if sql_clean.upper().startswith("INSERT") and "RETURNING" not in sql_clean.upper() and "ON CONFLICT" not in sql_clean.upper():
-                try:
-                    self._cur.execute(sql_clean + " RETURNING id;", params)
-                    row = self._cur.fetchone()
-                    if row:
-                        if isinstance(row, dict) and "id" in row:
-                            self.lastrowid = row["id"]
-                        elif isinstance(row, (tuple, list)) and len(row) > 0:
-                            self.lastrowid = row[0]
-                    return self
-                except Exception:
-                    pass
+                table_check = sql_clean.upper()
+                if any(t in table_check for t in ["INTO DEVICES", "INTO EVENTS", "INTO COMMANDS", "INTO SNAPSHOTS"]):
+                    try:
+                        self._cur.execute(sql_clean + " RETURNING id;", params)
+                        row = self._cur.fetchone()
+                        if row:
+                            if isinstance(row, dict) and "id" in row:
+                                self.lastrowid = row["id"]
+                            elif isinstance(row, (tuple, list)) and len(row) > 0:
+                                self.lastrowid = row[0]
+                        return self
+                    except Exception:
+                        pass
         self._cur.execute(sql, params)
         if not self._is_pg:
             self.lastrowid = getattr(self._cur, "lastrowid", None)
@@ -370,6 +372,7 @@ def delete_device(device_id: str) -> bool:
         cursor.execute("DELETE FROM commands WHERE device_id = ?", (device_id,))
         cursor.execute("DELETE FROM rules WHERE device_id = ?", (device_id,))
         cursor.execute("DELETE FROM events WHERE device_id = ?", (device_id,))
+        cursor.execute("DELETE FROM snapshots WHERE device_id = ?", (device_id,))
         conn.commit()
         return True
 

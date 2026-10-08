@@ -17,29 +17,40 @@ _cached_lan_ip: Optional[str] = None
 _active_pin: str = "842019"
 
 
+_cached_public_ip: Optional[str] = None
+_cached_public_ip_time: float = 0.0
+
+
 def get_lan_ip() -> str:
     global _cached_lan_ip
     if _cached_lan_ip:
         return _cached_lan_ip
     try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
-        _cached_lan_ip = ip
-        return ip
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            _cached_lan_ip = ip
+            return ip
     except Exception:
         return "127.0.0.1"
 
 
 def get_public_ip() -> str:
+    global _cached_public_ip, _cached_public_ip_time
+    now = time.time()
+    if _cached_public_ip and (now - _cached_public_ip_time < 300):
+        return _cached_public_ip
     try:
         import requests
         res = requests.get("https://api.ipify.org", timeout=2)
         if res.ok:
-            return res.text.strip()
+            _cached_public_ip = res.text.strip()
+            _cached_public_ip_time = now
+            return _cached_public_ip
     except Exception:
         pass
+    if _cached_public_ip:
+        return _cached_public_ip
     return get_lan_ip()
 
 

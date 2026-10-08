@@ -215,6 +215,8 @@ class WindowsAgent:
     def execute_command(self, action: str, payload: dict):
         if action == "lock":
             lock_windows_workstation()
+        elif action == "unlock":
+            show_windows_notification("Device Unlocked", "Workstation session has been unlocked by parent.")
         elif action == "push_notification":
             msg = payload.get("message", "Notice from parent")
             show_windows_notification("Message from Parent", msg)

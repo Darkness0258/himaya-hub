@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<device-admin>
+    <uses-policies>
+        <lock-password />
+        <wipe-data />
+        <disable-camera />
+        <disable-usb-tether />
+    </uses-policies>
+</device-admin>

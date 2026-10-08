@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/main_layout"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Status indicator -->
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="24sp"
+        android:textColor="@android:color/hologreen_dark"
+        android:layout_marginBottom="32dp"
+        android:text="Himaya Agent" />
+
+    <!-- Hub URL -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Hub URL"
+        android:textStyle="bold"
+        android:layout_marginBottom="4dp" />
+    <EditText
+        android:id="@+id/etHubUrl"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="http://192.168.1.100:8000"
+        android:inputType="textUri"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Device ID -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Device ID"
+        android:textStyle="bold"
+        android:layout_marginBottom="4dp" />
+    <EditText
+        android:id="@+id/etDeviceId"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="android-001"
+        android:inputType="text"
+        android:layout_marginBottom="24dp" />
+
+    <!-- Buttons -->
+    <Button
+        android:id="@+id/btnEnable"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Enable Agent" />
+
+    <Button
+        android:id="@+id/btnDisable"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Disable Agent" />
+
+    <Button
+        android:id="@+id/btnEnableVpn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Prepare VPN" />
+
+</LinearLayout>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.HimayaAgent" parent="Theme.AppCompat.DayNight.DarkActionBar">
+        <item name="colorPrimary">#1565C0</item>
+        <item name="colorPrimaryDark">#0D47A1</item>
+        <item name="colorAccent">#FF6F00</item>
+        <item name="android:statusBarColor">#0D47A1</item>
+    </style>
+</resources>

@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: himaya-hub
+    runtime: docker
+    dockerfilePath: ./hub/Dockerfile
+    dockerContext: ./hub
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: HIMAYA_PUBLIC_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false

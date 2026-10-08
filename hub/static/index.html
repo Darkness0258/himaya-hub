@@ -1,0 +1,2765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Himaya — Next-Gen Family Device Defense Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- External Assets: Lucide Icons & Chart.js -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root {
+      --bg-base: #06090f;
+      --bg-surface: #0c121e;
+      --bg-surface-elevated: rgba(18, 26, 43, 0.75);
+      --bg-glass: rgba(12, 18, 30, 0.72);
+      --bg-glass-card: rgba(16, 24, 40, 0.65);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-subtle-hover: rgba(255, 255, 255, 0.16);
+      --border-focus: rgba(16, 185, 129, 0.6);
+      
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --text-dark: #0f172a;
+
+      --accent-emerald: #10b981;
+      --accent-emerald-light: #34d399;
+      --accent-emerald-glow: rgba(16, 185, 129, 0.25);
+      --accent-emerald-dim: rgba(16, 185, 129, 0.12);
+
+      --accent-cyan: #06b6d4;
+      --accent-cyan-glow: rgba(6, 182, 212, 0.25);
+      --accent-cyan-dim: rgba(6, 182, 212, 0.12);
+
+      --accent-indigo: #6366f1;
+      --accent-indigo-dim: rgba(99, 102, 241, 0.12);
+
+      --accent-amber: #f59e0b;
+      --accent-amber-glow: rgba(245, 158, 11, 0.25);
+      --accent-amber-dim: rgba(245, 158, 11, 0.12);
+
+      --accent-rose: #f43f5e;
+      --accent-rose-glow: rgba(244, 63, 94, 0.28);
+      --accent-rose-dim: rgba(244, 63, 94, 0.12);
+
+      --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
+      --radius-xl: 24px;
+      --radius-full: 9999px;
+
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+      --shadow-glow: 0 0 32px var(--accent-emerald-glow);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-primary);
+      font-family: var(--font-main);
+      min-height: 100vh;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 10% 5%, rgba(16, 185, 129, 0.08) 0%, transparent 45%),
+        radial-gradient(circle at 90% 15%, rgba(6, 182, 212, 0.07) 0%, transparent 40%),
+        radial-gradient(circle at 50% 90%, rgba(99, 102, 241, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(12, 18, 30, 0.6) 0%, transparent 100%);
+      background-attachment: fixed;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Layout Container */
+    .app-shell {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 24px 32px 64px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    /* Header Nav */
+    header.app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 28px;
+      background: var(--bg-glass);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-md);
+      position: sticky;
+      top: 16px;
+      z-index: 90;
+    }
+
+    .brand-cluster {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .brand-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      box-shadow: 0 0 24px var(--accent-emerald-glow);
+      position: relative;
+    }
+
+    .brand-mark::after {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: var(--radius-md);
+      padding: 1px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.4), transparent);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    .brand-meta h1 {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      background: linear-gradient(135deg, #ffffff 40%, #a7f3d0 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-meta p {
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-top: 3px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    /* Live Status Pill */
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: var(--accent-emerald-dim);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: var(--radius-full);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--accent-emerald-light);
+      letter-spacing: 0.04em;
+    }
+
+    .status-pill.disconnected {
+      background: var(--accent-rose-dim);
+      border-color: rgba(244, 63, 94, 0.3);
+      color: #fda4af;
+    }
+
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background-color: var(--accent-emerald);
+      box-shadow: 0 0 10px var(--accent-emerald);
+      animation: pulse-glow 2s infinite ease-in-out;
+    }
+
+    .status-pill.disconnected .pulse-dot {
+      background-color: var(--accent-rose);
+      box-shadow: 0 0 10px var(--accent-rose);
+      animation: none;
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.5; }
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border-radius: var(--radius-md);
+      font-family: var(--font-main);
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      border: 1px solid transparent;
+      outline: none;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 14px var(--accent-emerald-glow);
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+      background: linear-gradient(135deg, #047857 0%, #059669 100%);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+      border-color: var(--border-subtle);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.09);
+      border-color: var(--border-subtle-hover);
+    }
+
+    .btn-danger {
+      background: rgba(244, 63, 94, 0.12);
+      color: #fb7185;
+      border-color: rgba(244, 63, 94, 0.3);
+    }
+
+    .btn-danger:hover {
+      background: rgba(244, 63, 94, 0.2);
+      border-color: rgba(244, 63, 94, 0.5);
+      color: #ffffff;
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 0.78rem;
+      border-radius: var(--radius-sm);
+    }
+
+    /* Segmented Tab Bar */
+    .tab-bar-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 14px;
+    }
+
+    .segmented-tabs {
+      display: inline-flex;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 4px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-subtle);
+      gap: 4px;
+    }
+
+    .nav-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      border-radius: var(--radius-md);
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .nav-tab:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .nav-tab.active {
+      color: var(--text-primary);
+      background: var(--bg-surface-elevated);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .nav-tab.active i {
+      color: var(--accent-emerald);
+    }
+
+    /* Top Stats Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+    }
+
+    .metric-card {
+      background: var(--bg-glass-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 20px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.2s ease;
+    }
+
+    .metric-card:hover {
+      border-color: var(--border-subtle-hover);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .metric-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .metric-label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .metric-icon-box {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      color: var(--accent-emerald);
+    }
+
+    .metric-value {
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      font-family: var(--font-main);
+    }
+
+    .metric-footer {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .metric-pill-sub {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: var(--radius-full);
+      font-size: 0.72rem;
+      font-weight: 600;
+      font-family: var(--font-mono);
+    }
+
+    .pill-green {
+      background: var(--accent-emerald-dim);
+      color: var(--accent-emerald-light);
+    }
+
+    .pill-blue {
+      background: var(--accent-cyan-dim);
+      color: #67e8f9;
+    }
+
+    .pill-rose {
+      background: var(--accent-rose-dim);
+      color: #fda4af;
+    }
+
+    .pill-amber {
+      background: var(--accent-amber-dim);
+      color: #fde047;
+    }
+
+    /* Live Telemetry Chart Section */
+    .telemetry-banner {
+      background: var(--bg-glass-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 22px 26px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .telemetry-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .telemetry-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .telemetry-title h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 140px;
+      width: 100%;
+    }
+
+    /* Two-Column Cockpit Layout */
+    .cockpit-layout {
+      display: grid;
+      grid-template-columns: 1fr 410px;
+      gap: 28px;
+      align-items: start;
+    }
+
+    /* Section Headers */
+    .section-title-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .section-title-bar h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-badges {
+      display: flex;
+      gap: 8px;
+    }
+
+    .badge-tag {
+      padding: 3px 9px;
+      border-radius: var(--radius-full);
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      font-weight: 500;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+    }
+
+    /* Device Cards Grid */
+    .device-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 18px;
+    }
+
+    .device-card {
+      background: var(--bg-glass-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      position: relative;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .device-card:hover {
+      border-color: var(--border-subtle-hover);
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+      transform: translateY(-2px);
+    }
+
+    .device-card.online {
+      border-top: 3px solid var(--accent-emerald);
+    }
+
+    .device-card.locked {
+      border-top: 3px solid var(--accent-rose);
+    }
+
+    .device-card.paused {
+      border-top: 3px solid var(--accent-amber);
+    }
+
+    .device-card.offline {
+      border-top: 3px solid var(--text-muted);
+      opacity: 0.85;
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .card-identity {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .device-icon-bubble {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-primary);
+      flex-shrink: 0;
+    }
+
+    .device-title-area h3 {
+      font-size: 1.02rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      color: var(--text-primary);
+    }
+
+    .device-sub-tags {
+      display: flex;
+      gap: 6px;
+      margin-top: 5px;
+    }
+
+    .role-badge {
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: var(--accent-indigo-dim);
+      color: #c7d2fe;
+      border: 1px solid rgba(99, 102, 241, 0.25);
+    }
+
+    .platform-badge {
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Live State Pill in Card */
+    .state-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+    }
+
+    .state-indicator.online {
+      background: var(--accent-emerald-dim);
+      color: var(--accent-emerald-light);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .state-indicator.locked {
+      background: var(--accent-rose-dim);
+      color: #fda4af;
+      border: 1px solid rgba(244, 63, 94, 0.3);
+    }
+
+    .state-indicator.paused {
+      background: var(--accent-amber-dim);
+      color: #fde047;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .state-indicator.offline {
+      background: rgba(100, 116, 139, 0.14);
+      color: var(--text-muted);
+      border: 1px solid rgba(100, 116, 139, 0.2);
+    }
+
+    /* Device Meta Info Table */
+    .card-meta-box {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 0.78rem;
+    }
+
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .meta-key {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .meta-val {
+      font-family: var(--font-mono);
+      color: var(--text-secondary);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .meta-val.copyable {
+      cursor: pointer;
+      transition: color 0.15s ease;
+    }
+
+    .meta-val.copyable:hover {
+      color: var(--text-primary);
+    }
+
+    /* Protection Loops Row */
+    .protection-badges-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .guard-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 9px;
+      border-radius: var(--radius-full);
+      font-size: 0.7rem;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+    }
+
+    .guard-chip.active {
+      background: rgba(16, 185, 129, 0.08);
+      border-color: rgba(16, 185, 129, 0.25);
+      color: #6ee7b7;
+    }
+
+    /* Actions Deck */
+    .card-action-bar {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border-subtle);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-secondary);
+      transition: all 0.2s ease;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-primary);
+      border-color: var(--border-subtle-hover);
+    }
+
+    .action-btn.lock-trigger:hover {
+      background: var(--accent-rose-dim);
+      border-color: rgba(244, 63, 94, 0.35);
+      color: #fda4af;
+    }
+
+    .action-btn.unlock-trigger {
+      background: var(--accent-emerald-dim);
+      border-color: rgba(16, 185, 129, 0.3);
+      color: var(--accent-emerald-light);
+    }
+
+    .action-btn.pause-trigger:hover {
+      background: var(--accent-amber-dim);
+      border-color: rgba(245, 158, 11, 0.35);
+      color: #fde047;
+    }
+
+    .action-btn.resume-trigger {
+      background: var(--accent-cyan-dim);
+      border-color: rgba(6, 182, 212, 0.3);
+      color: #67e8f9;
+    }
+
+    /* Right Sidebar: Live Security Stream */
+    .stream-panel {
+      background: var(--bg-glass-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: calc(100vh - 120px);
+      position: sticky;
+      top: 100px;
+    }
+
+    .stream-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .stream-header h2 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .filter-pills {
+      display: flex;
+      gap: 5px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 3px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .filter-chip {
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .filter-chip.active {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .stream-feed {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+      max-height: 520px;
+      padding-right: 4px;
+    }
+
+    .stream-feed::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    .stream-feed::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: var(--radius-full);
+    }
+
+    .event-card {
+      display: flex;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: var(--radius-md);
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border-subtle);
+      transition: all 0.15s ease;
+    }
+
+    .event-card:hover {
+      background: rgba(255, 255, 255, 0.03);
+      border-color: var(--border-subtle-hover);
+    }
+
+    .event-icon-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .event-icon-circle.heartbeat {
+      background: var(--accent-emerald-dim);
+      color: var(--accent-emerald-light);
+    }
+
+    .event-icon-circle.dns {
+      background: var(--accent-cyan-dim);
+      color: #67e8f9;
+    }
+
+    .event-icon-circle.vpn {
+      background: var(--accent-rose-dim);
+      color: #fda4af;
+    }
+
+    .event-icon-circle.screenshot {
+      background: var(--accent-indigo-dim);
+      color: #c7d2fe;
+    }
+
+    .event-icon-circle.lock {
+      background: var(--accent-rose-dim);
+      color: #fda4af;
+    }
+
+    .event-icon-circle.unlock {
+      background: var(--accent-emerald-dim);
+      color: var(--accent-emerald-light);
+    }
+
+    .event-icon-circle.alert {
+      background: var(--accent-amber-dim);
+      color: #fde047;
+    }
+
+    .event-body {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .event-top-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .event-device-tag {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .event-timestamp {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .event-detail-text {
+      font-size: 0.74rem;
+      color: var(--text-secondary);
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    /* Screen Timeline Tab View */
+    .tab-view-container {
+      display: none;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .tab-view-container.active {
+      display: flex;
+    }
+
+    .snapshots-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .snapshot-item {
+      background: var(--bg-glass-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .snapshot-item:hover {
+      border-color: var(--border-subtle-hover);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .snapshot-thumb-wrap {
+      width: 100%;
+      height: 180px;
+      background: #000;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .snapshot-thumb-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+
+    .snapshot-item:hover .snapshot-thumb-wrap img {
+      transform: scale(1.04);
+    }
+
+    .snapshot-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      color: white;
+    }
+
+    .snapshot-item:hover .snapshot-overlay {
+      opacity: 1;
+    }
+
+    .snapshot-info-bar {
+      padding: 12px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.3);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .snapshot-device-name {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .snapshot-time-label {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    /* Rules & Curfews View */
+    .rules-deck {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .settings-panel {
+      background: var(--bg-glass-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .settings-panel h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .category-toggle-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      transition: border-color 0.15s ease;
+    }
+
+    .toggle-row:hover {
+      border-color: var(--border-subtle-hover);
+    }
+
+    .toggle-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .toggle-icon-wrap {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+    }
+
+    .toggle-info h4 {
+      font-size: 0.86rem;
+      font-weight: 600;
+    }
+
+    .toggle-info p {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Switch Component */
+    .switch-label {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      cursor: pointer;
+    }
+
+    .switch-label input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      inset: 0;
+      background-color: rgba(255, 255, 255, 0.12);
+      border-radius: var(--radius-full);
+      transition: 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      border-radius: 50%;
+      transition: 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    input:checked + .slider {
+      background-color: var(--accent-emerald);
+      box-shadow: 0 0 12px var(--accent-emerald-glow);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
+    /* Form Inputs */
+    .input-field {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      color: var(--text-primary);
+      font-family: var(--font-main);
+      font-size: 0.86rem;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .input-field:focus {
+      border-color: var(--accent-emerald);
+      box-shadow: 0 0 0 3px var(--accent-emerald-glow);
+    }
+
+    textarea.input-field {
+      resize: vertical;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+    }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      padding: 20px;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle-hover);
+      border-radius: var(--radius-xl);
+      max-width: 680px;
+      width: 100%;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      box-shadow: var(--shadow-lg);
+      transform: scale(0.96) translateY(8px);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-backdrop.open .modal-box {
+      transform: scale(1) translateY(0);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .modal-header h3 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .modal-header p {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .modal-close-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: none;
+      color: var(--text-muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .modal-close-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--text-primary);
+    }
+
+    /* Sub-tabs in Enrollment Modal */
+    .modal-subtabs {
+      display: flex;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 4px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .subtab-btn {
+      flex: 1;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .subtab-btn.active {
+      background: var(--bg-surface-elevated);
+      color: var(--text-primary);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Terminal Box for PowerShell commands */
+    .terminal-box {
+      background: #030712;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+    }
+
+    .terminal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 8px;
+    }
+
+    .terminal-dots {
+      display: flex;
+      gap: 5px;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+    }
+
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-green { background: #10b981; }
+
+    .terminal-code {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: #38bdf8;
+      word-break: break-all;
+      line-height: 1.5;
+      user-select: all;
+    }
+
+    /* Toast Container */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 9999;
+      pointer-events: none;
+    }
+
+    .toast-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      font-size: 0.84rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      min-width: 320px;
+      pointer-events: auto;
+      animation: toast-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .toast-item.success {
+      border-left: 4px solid var(--accent-emerald);
+    }
+
+    .toast-item.error {
+      border-left: 4px solid var(--accent-rose);
+    }
+
+    .toast-item.info {
+      border-left: 4px solid var(--accent-cyan);
+    }
+
+    @keyframes toast-slide-in {
+      from { transform: translateX(40px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* Lightbox Modal */
+    .lightbox-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.88);
+      backdrop-filter: blur(16px);
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 30px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .lightbox-modal.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .lightbox-content {
+      max-width: 1200px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+    }
+
+    .lightbox-content img {
+      max-width: 100%;
+      max-height: 82vh;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+      box-shadow: var(--shadow-lg);
+      object-fit: contain;
+    }
+
+    .lightbox-meta-row {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-secondary);
+      font-size: 0.84rem;
+    }
+
+    /* Verification Test Bar */
+    .test-toolbar {
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 14px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .test-toolbar-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .test-buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    @media (max-width: 1100px) {
+      .cockpit-layout {
+        grid-template-columns: 1fr;
+      }
+      .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .rules-deck {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .app-shell {
+        padding: 16px;
+      }
+      .metrics-grid {
+        grid-template-columns: 1fr;
+      }
+      header.app-header {
+        flex-direction: column;
+        gap: 14px;
+        align-items: flex-start;
+      }
+      .header-actions {
+        width: 100%;
+        justify-content: space-between;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-shell">
+
+    <!-- Top App Navigation -->
+    <header class="app-header">
+      <div class="brand-cluster">
+        <div class="brand-mark">
+          <i data-lucide="shield-check" style="width: 26px; height: 26px;"></i>
+        </div>
+        <div class="brand-meta">
+          <h1>HIMAYA</h1>
+          <p>Next-Gen Family Defense Platform</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="status-pill" id="hubStatusPill">
+          <span class="pulse-dot"></span>
+          <span id="hubStatusText">HUB CONNECTED</span>
+        </div>
+
+        <button class="btn btn-danger btn-sm" onclick="lockAllDevicesPrompt()">
+          <i data-lucide="lock" style="width: 15px; height: 15px;"></i>
+          Lock All Devices
+        </button>
+
+        <button class="btn btn-primary" onclick="openEnrollModal()">
+          <i data-lucide="plus-circle" style="width: 17px; height: 17px;"></i>
+          Auto-Enroll Real Device
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <div class="tab-bar-container">
+      <div class="segmented-tabs">
+        <button class="nav-tab active" id="tabBtnFleet" onclick="switchMainTab('fleet')">
+          <i data-lucide="layout-grid" style="width: 16px; height: 16px;"></i>
+          Fleet Cockpit
+        </button>
+        <button class="nav-tab" id="tabBtnSnapshots" onclick="switchMainTab('snapshots')">
+          <i data-lucide="camera" style="width: 16px; height: 16px;"></i>
+          Screen Timeline
+        </button>
+        <button class="nav-tab" id="tabBtnRules" onclick="switchMainTab('rules')">
+          <i data-lucide="shield" style="width: 16px; height: 16px;"></i>
+          Policies & Curfews
+        </button>
+      </div>
+
+      <div style="font-size: 0.76rem; color: var(--text-muted); font-family: var(--font-mono);" id="clockDisplay">
+        UTC LIVE MONITOR
+      </div>
+    </div>
+
+    <!-- KPI Metric Cards Grid -->
+    <section class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-header">
+          <span class="metric-label">Managed Fleet</span>
+          <div class="metric-icon-box">
+            <i data-lucide="laptop" style="width: 18px; height: 18px;"></i>
+          </div>
+        </div>
+        <div class="metric-value" id="statTotalDevices">0</div>
+        <div class="metric-footer">
+          <span class="metric-pill-sub pill-blue">SQLite Synced</span>
+          <span>Zero-Touch Onboarding</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-header">
+          <span class="metric-label">Active Protection</span>
+          <div class="metric-icon-box" style="color: var(--accent-emerald);">
+            <i data-lucide="shield-check" style="width: 18px; height: 18px;"></i>
+          </div>
+        </div>
+        <div class="metric-value" id="statOnlineDevices" style="color: var(--accent-emerald);">0</div>
+        <div class="metric-footer">
+          <span class="metric-pill-sub pill-green">Watchdog 45s</span>
+          <span>Live WebSocket Feed</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-header">
+          <span class="metric-label">DNS Threat Drops</span>
+          <div class="metric-icon-box" style="color: var(--accent-cyan);">
+            <i data-lucide="shield-alert" style="width: 18px; height: 18px;"></i>
+          </div>
+        </div>
+        <div class="metric-value" id="statDnsBlocks" style="color: var(--accent-cyan);">0</div>
+        <div class="metric-footer">
+          <span class="metric-pill-sub pill-blue">Port 5353</span>
+          <span>Cloudflare Family Filter</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-header">
+          <span class="metric-label">VPN Evasion Alarms</span>
+          <div class="metric-icon-box" style="color: var(--accent-rose);">
+            <i data-lucide="alert-triangle" style="width: 18px; height: 18px;"></i>
+          </div>
+        </div>
+        <div class="metric-value" id="statVpnAlarms" style="color: var(--accent-rose);">0</div>
+        <div class="metric-footer">
+          <span class="metric-pill-sub pill-rose">Zero Evasion</span>
+          <span>Hardware Adapter Audit</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Live Telemetry Sparkline / Trend Section -->
+    <section class="telemetry-banner">
+      <div class="telemetry-header">
+        <div class="telemetry-title">
+          <i data-lucide="activity" style="width: 18px; height: 18px; color: var(--accent-emerald);"></i>
+          <h2>Live Telemetry & Activity Stream</h2>
+        </div>
+        <div style="font-size: 0.74rem; color: var(--text-muted); font-family: var(--font-mono);">
+          Real-time Event Ingestion Rate
+        </div>
+      </div>
+      <div class="chart-container">
+        <canvas id="telemetryChart"></canvas>
+      </div>
+    </section>
+
+    <!-- TAB 1: FLEET COCKPIT -->
+    <main class="tab-view-container active" id="viewFleet">
+      <div class="cockpit-layout">
+        
+        <!-- Left: Device Fleet Grid -->
+        <div class="fleet-column">
+          <div class="section-title-bar">
+            <h2>
+              <i data-lucide="cpu" style="width: 20px; height: 20px; color: var(--accent-emerald);"></i>
+              Protected Device Fleet
+            </h2>
+            <div class="section-badges">
+              <span class="badge-tag">UDP Discovery :5354</span>
+              <span class="badge-tag">Failover Enabled</span>
+            </div>
+          </div>
+
+          <div class="device-grid" id="devicesGrid">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- Right: Live Security Stream -->
+        <aside class="stream-panel">
+          <div class="stream-header">
+            <h2>
+              <i data-lucide="radio" style="width: 18px; height: 18px; color: var(--accent-emerald);"></i>
+              Live Event Feed
+            </h2>
+          </div>
+
+          <div class="filter-pills">
+            <button class="filter-chip active" onclick="setEventFilter('all', this)">All</button>
+            <button class="filter-chip" onclick="setEventFilter('security', this)">Threats</button>
+            <button class="filter-chip" onclick="setEventFilter('heartbeat', this)">Heartbeats</button>
+            <button class="filter-chip" onclick="setEventFilter('screenshot', this)">Screens</button>
+          </div>
+
+          <div class="stream-feed" id="eventStreamFeed">
+            <!-- Events rendered dynamically -->
+          </div>
+        </aside>
+
+      </div>
+    </main>
+
+    <!-- TAB 2: SCREEN TIMELINE -->
+    <section class="tab-view-container" id="viewSnapshots">
+      <div class="section-title-bar">
+        <h2>
+          <i data-lucide="camera" style="width: 20px; height: 20px; color: var(--accent-cyan);"></i>
+          Visual Workstation Timeline
+        </h2>
+        <div class="section-badges">
+          <span class="badge-tag">Encrypted Storage</span>
+          <span class="badge-tag">2-Min Interval</span>
+        </div>
+      </div>
+
+      <div class="snapshots-grid" id="snapshotsGrid">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- TAB 3: POLICIES & CURFEWS -->
+    <section class="tab-view-container" id="viewRules">
+      <div class="rules-deck">
+
+        <!-- DNS Category Filters -->
+        <div class="settings-panel">
+          <h3>
+            <i data-lucide="shield-check" style="width: 20px; height: 20px; color: var(--accent-emerald);"></i>
+            Content Protection Categories
+          </h3>
+          <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: -6px;">
+            Enforce real-time packet-level DNS sinkholing across all enrolled devices.
+          </p>
+
+          <div class="category-toggle-list">
+            <div class="toggle-row">
+              <div class="toggle-left">
+                <div class="toggle-icon-wrap" style="color: var(--accent-rose);">
+                  <i data-lucide="shield-ban" style="width: 16px; height: 16px;"></i>
+                </div>
+                <div class="toggle-info">
+                  <h4>Adult & Explicit Domains</h4>
+                  <p>Blocks pornography, dating portals, and mature content</p>
+                </div>
+              </div>
+              <label class="switch-label">
+                <input type="checkbox" id="ruleCatAdult" checked>
+                <span class="slider"></span>
+              </label>
+            </div>
+
+            <div class="toggle-row">
+              <div class="toggle-left">
+                <div class="toggle-icon-wrap" style="color: var(--accent-amber);">
+                  <i data-lucide="dices" style="width: 16px; height: 16px;"></i>
+                </div>
+                <div class="toggle-info">
+                  <h4>Gambling & Betting</h4>
+                  <p>Blocks casinos, crypto lotteries, and betting platforms</p>
+                </div>
+              </div>
+              <label class="switch-label">
+                <input type="checkbox" id="ruleCatGambling" checked>
+                <span class="slider"></span>
+              </label>
+            </div>
+
+            <div class="toggle-row">
+              <div class="toggle-left">
+                <div class="toggle-icon-wrap" style="color: var(--accent-cyan);">
+                  <i data-lucide="share-2" style="width: 16px; height: 16px;"></i>
+                </div>
+                <div class="toggle-info">
+                  <h4>Social Media Algorithms</h4>
+                  <p>Restricts addictive feeds (TikTok, Instagram, Omegle)</p>
+                </div>
+              </div>
+              <label class="switch-label">
+                <input type="checkbox" id="ruleCatSocial">
+                <span class="slider"></span>
+              </label>
+            </div>
+
+            <div class="toggle-row">
+              <div class="toggle-left">
+                <div class="toggle-icon-wrap" style="color: var(--accent-indigo);">
+                  <i data-lucide="gamepad-2" style="width: 16px; height: 16px;"></i>
+                </div>
+                <div class="toggle-info">
+                  <h4>Gaming Portals</h4>
+                  <p>Blocks online web games and streaming services during homework</p>
+                </div>
+              </div>
+              <label class="switch-label">
+                <input type="checkbox" id="ruleCatGaming">
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="savePolicyRules()" style="margin-top: 8px;">
+            <i data-lucide="check" style="width: 16px; height: 16px;"></i>
+            Save Content Rules
+          </button>
+        </div>
+
+        <!-- Curfew & Custom Blocklist -->
+        <div class="settings-panel">
+          <h3>
+            <i data-lucide="moon" style="width: 20px; height: 20px; color: var(--accent-indigo);"></i>
+            Bedtime Curfew & Custom Blocklist
+          </h3>
+
+          <div class="toggle-row">
+            <div class="toggle-left">
+              <div class="toggle-icon-wrap" style="color: var(--accent-indigo);">
+                <i data-lucide="clock" style="width: 16px; height: 16px;"></i>
+              </div>
+              <div class="toggle-info">
+                <h4>Bedtime Screen Lockdown</h4>
+                <p>Locks computer screen and suspends internet during curfew</p>
+              </div>
+            </div>
+            <label class="switch-label">
+              <input type="checkbox" id="bedtimeToggle">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div>
+              <label style="font-size: 0.74rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Curfew Start</label>
+              <input type="time" id="bedtimeStart" class="input-field" value="21:00" style="margin-top: 5px;">
+            </div>
+            <div>
+              <label style="font-size: 0.74rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Curfew End</label>
+              <input type="time" id="bedtimeEnd" class="input-field" value="07:00" style="margin-top: 5px;">
+            </div>
+          </div>
+
+          <div>
+            <label style="font-size: 0.74rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Custom Blacklisted Domains (1 per line)</label>
+            <textarea id="customDomainsTextarea" rows="4" class="input-field" placeholder="tiktok.com&#10;omegle.com&#10;kick.com" style="margin-top: 5px;"></textarea>
+          </div>
+
+          <button class="btn btn-secondary" onclick="savePolicyRules()">
+            <i data-lucide="save" style="width: 16px; height: 16px;"></i>
+            Update Curfew Schedule
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Bottom Diagnostic & Simulation Bar -->
+    <div class="test-toolbar">
+      <div class="test-toolbar-info">
+        <i data-lucide="terminal" style="width: 18px; height: 18px; color: var(--accent-emerald);"></i>
+        <span><strong>Live Hub Engine:</strong> FastAPI Lifespan + SQLite Persistence + Async UDP Discovery + DNS Sinkhole Active</span>
+      </div>
+      <div class="test-buttons">
+        <button class="btn btn-secondary btn-sm" onclick="triggerSimulatedHeartbeat()">
+          <i data-lucide="heart" style="width: 14px; height: 14px;"></i>
+          Pulse Heartbeat
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="triggerSimulatedDnsBlock()">
+          <i data-lucide="shield-x" style="width: 14px; height: 14px;"></i>
+          Simulate DNS Block
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="triggerSimulatedVpnAlarm()">
+          <i data-lucide="alert-octagon" style="width: 14px; height: 14px;"></i>
+          Simulate VPN Bypass
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- AUTO-ENROLLMENT STUDIO MODAL -->
+  <div class="modal-backdrop" id="enrollModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div>
+          <h3>Zero-Touch Auto-Enrollment Studio</h3>
+          <p>Deploy protection to real Windows PCs & Android devices across Internet or Home Wi-Fi.</p>
+        </div>
+        <button class="modal-close-btn" onclick="closeEnrollModal()">
+          <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+        </button>
+      </div>
+
+      <!-- Network Target Selector -->
+      <div class="modal-subtabs">
+        <button class="subtab-btn active" id="subtabInternet" onclick="switchEnrollTarget('internet')">
+          <i data-lucide="globe" style="width: 15px; height: 15px;"></i>
+          Internet & 4G (Anywhere)
+        </button>
+        <button class="subtab-btn" id="subtabLan" onclick="switchEnrollTarget('lan')">
+          <i data-lucide="wifi" style="width: 15px; height: 15px;"></i>
+          Home Wi-Fi (LAN)
+        </button>
+      </div>
+
+      <!-- Platform Selector -->
+      <div class="modal-subtabs">
+        <button class="subtab-btn active" id="subtabWin" onclick="switchEnrollPlatform('windows')">
+          <i data-lucide="monitor" style="width: 15px; height: 15px;"></i>
+          Windows PC (1-Click PowerShell)
+        </button>
+        <button class="subtab-btn" id="subtabAndroid" onclick="switchEnrollPlatform('android')">
+          <i data-lucide="smartphone" style="width: 15px; height: 15px;"></i>
+          Android Mobile (QR Code & PIN)
+        </button>
+      </div>
+
+      <!-- Windows Tab Content -->
+      <div id="enrollContentWin" style="display: flex; flex-direction: column; gap: 14px;">
+        <p style="font-size: 0.82rem; color: var(--text-secondary);">
+          Open PowerShell on the child's PC and run this single command. It downloads the agent, connects to your Hub, and enables silent auto-start:
+        </p>
+
+        <div class="terminal-box">
+          <div class="terminal-header">
+            <div class="terminal-dots">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+            </div>
+            <span>Windows PowerShell (Run as User)</span>
+          </div>
+          <div class="terminal-code" id="enrollCommandText">
+            irm http://127.0.0.1:8000/enroll/win | iex
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="copyEnrollCommand()">
+          <i data-lucide="copy" style="width: 16px; height: 16px;"></i>
+          <span id="copyCmdBtnText">Copy 1-Click Command</span>
+        </button>
+      </div>
+
+      <!-- Android Tab Content -->
+      <div id="enrollContentAndroid" style="display: none; flex-direction: column; gap: 16px; align-items: center; text-align: center;">
+        <p style="font-size: 0.82rem; color: var(--text-secondary);">
+          Scan this QR code using the child's smartphone camera or visit the onboarding link:
+        </p>
+
+        <div style="background: white; padding: 14px; border-radius: var(--radius-md); box-shadow: var(--shadow-md);">
+          <img id="enrollQrImg" src="/enroll/qr" alt="Enrollment QR Code" style="width: 180px; height: 180px; display: block;" />
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 0.8rem; color: var(--text-muted);">One-Time Pairing PIN:</span>
+          <span style="font-family: var(--font-mono); font-size: 1.15rem; font-weight: 800; color: var(--accent-emerald-light); background: rgba(16, 185, 129, 0.12); padding: 4px 12px; border-radius: var(--radius-sm); border: 1px solid rgba(16, 185, 129, 0.3);" id="enrollPinCode">
+            842019
+          </span>
+        </div>
+
+        <div style="font-size: 0.78rem; color: var(--text-muted); font-family: var(--font-mono);" id="enrollMobileUrlText">
+          http://192.168.1.7:8000/enroll/mobile
+        </div>
+      </div>
+
+      <!-- Custom Internet URL Settings in Modal -->
+      <div style="background: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Cloudflare Tunnel / Custom Public URL</span>
+          <span style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);" id="publicIpBadge">Public: Detecting...</span>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="customPublicUrlInput" class="input-field" placeholder="e.g. https://my-family-hub.trycloudflare.com" style="flex: 1;" />
+          <button class="btn btn-secondary btn-sm" onclick="saveCustomPublicUrl()">Update URL</button>
+        </div>
+        <p style="font-size: 0.72rem; color: var(--text-muted);">
+          💡 Free instant remote tunnel: Run <code>cloudflared tunnel --url http://localhost:8000</code> in your terminal.
+        </p>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end;">
+        <button class="btn btn-secondary" onclick="closeEnrollModal()">Close Studio</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PUSH ALERT MODAL -->
+  <div class="modal-backdrop" id="pushModal">
+    <div class="modal-box" style="max-width: 480px;">
+      <div class="modal-header">
+        <div>
+          <h3 id="pushModalTitle">Dispatch Notice</h3>
+          <p>This message will appear instantly as a native Windows alert on the child's screen.</p>
+        </div>
+        <button class="modal-close-btn" onclick="closePushModal()">
+          <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+        </button>
+      </div>
+
+      <div>
+        <label style="font-size: 0.74rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Message Body</label>
+        <input type="text" id="pushMessageInput" class="input-field" placeholder="e.g. Dinner is ready! Please save your homework." style="margin-top: 6px;" />
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button class="btn btn-secondary" onclick="closePushModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitPushAction()">
+          <i data-lucide="send" style="width: 15px; height: 15px;"></i>
+          Send Alert Now
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIGHTBOX SCREENSHOT MODAL -->
+  <div class="lightbox-modal" id="lightboxModal" onclick="closeLightbox()">
+    <div class="lightbox-content" onclick="event.stopPropagation()">
+      <img id="lightboxImg" src="" alt="Screen Preview" />
+      <div class="lightbox-meta-row">
+        <span id="lightboxMetaText" style="font-family: var(--font-mono); font-weight: 600;"></span>
+        <button class="btn btn-secondary btn-sm" onclick="closeLightbox()">Close Preview</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING TOASTS -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- APPLICATION LOGIC & LIVE STREAM ENGINE -->
+  <script>
+    // State
+    let devices = [];
+    let events = [];
+    let snapshots = [];
+    let currentFilter = 'all';
+    let enrollTarget = 'internet';
+    let enrollPlatform = 'windows';
+    let targetDeviceIdForAction = null;
+    let enrollmentInfo = null;
+    let ws = null;
+    let telemetryChart = null;
+
+    let stats = {
+      dnsBlocks: 0,
+      vpnAttempts: 0
+    };
+
+    // Telemetry time-series data buffer (last 15 intervals)
+    const telemetryData = {
+      labels: Array.from({length: 12}, (_, i) => `-${(11 - i) * 10}s`),
+      heartbeats: [0, 0, 1, 1, 1, 1, 2, 2, 1, 2, 1, 2],
+      blocks: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    };
+
+    const host = window.location.host || '127.0.0.1:8000';
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const httpProtocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+    const WS_URL = `${wsProtocol}//${host}/ws`;
+    const API_BASE = `${httpProtocol}//${host}`;
+
+    // Initialization
+    window.addEventListener('DOMContentLoaded', () => {
+      initIcons();
+      initChart();
+      initClock();
+      fetchInitialData();
+      connectWebSocket();
+      fetchEnrollmentInfo();
+    });
+
+    function initIcons() {
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+    }
+
+    function initClock() {
+      const el = document.getElementById('clockDisplay');
+      setInterval(() => {
+        const now = new Date();
+        el.textContent = `${now.toISOString().substring(11, 19)} UTC LIVE MONITOR`;
+      }, 1000);
+    }
+
+    function initChart() {
+      const ctx = document.getElementById('telemetryChart').getContext('2d');
+      telemetryChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: telemetryData.labels,
+          datasets: [
+            {
+              label: 'Heartbeats / Safe Traffic',
+              data: telemetryData.heartbeats,
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.08)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.35,
+              pointRadius: 2,
+              pointHoverRadius: 4
+            },
+            {
+              label: 'Threat Drops & Alarms',
+              data: telemetryData.blocks,
+              borderColor: '#f43f5e',
+              backgroundColor: 'rgba(244, 63, 94, 0.08)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.35,
+              pointRadius: 2,
+              pointHoverRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              align: 'end',
+              labels: {
+                color: '#94a3b8',
+                font: { family: "'Plus Jakarta Sans', sans-serif", size: 11, weight: 600 },
+                boxWidth: 10,
+                boxHeight: 10
+              }
+            },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              backgroundColor: '#0c121e',
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+              borderWidth: 1,
+              titleColor: '#f8fafc',
+              bodyColor: '#94a3b8'
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.04)' },
+              ticks: { color: '#64748b', font: { family: "'JetBrains Mono', monospace", size: 10 } }
+            },
+            y: {
+              min: 0,
+              grid: { color: 'rgba(255, 255, 255, 0.04)' },
+              ticks: { color: '#64748b', stepSize: 1, font: { family: "'JetBrains Mono', monospace", size: 10 } }
+            }
+          }
+        }
+      });
+    }
+
+    function recordTelemetryPoint(type) {
+      if (!telemetryChart) return;
+      const hbIndex = telemetryData.heartbeats.length - 1;
+      const blkIndex = telemetryData.blocks.length - 1;
+
+      if (type === 'heartbeat') telemetryData.heartbeats[hbIndex]++;
+      else if (type === 'dns_block' || type === 'vpn_attempt') telemetryData.blocks[blkIndex]++;
+
+      telemetryChart.update('none');
+    }
+
+    // Shift chart periodically
+    setInterval(() => {
+      if (!telemetryChart) return;
+      telemetryData.heartbeats.shift();
+      telemetryData.heartbeats.push(0);
+      telemetryData.blocks.shift();
+      telemetryData.blocks.push(0);
+      telemetryChart.update('none');
+    }, 10000);
+
+    // Data Loaders
+    async function fetchInitialData() {
+      try {
+        const [devRes, evtRes] = await Promise.all([
+          fetch(`${API_BASE}/devices`),
+          fetch(`${API_BASE}/events?limit=40`)
+        ]);
+
+        if (devRes.ok) devices = await devRes.json();
+        if (evtRes.ok) {
+          events = await evtRes.json();
+          events.forEach(e => {
+            if (e.type === 'dns_block') stats.dnsBlocks++;
+            if (e.type === 'vpn_attempt') stats.vpnAttempts++;
+          });
+        }
+
+        renderDevices();
+        renderEvents();
+        updateStatsCounters();
+        initIcons();
+      } catch (err) {
+        console.warn("[Himaya] REST initial load error:", err);
+      }
+    }
+
+    async function fetchEnrollmentInfo() {
+      try {
+        const res = await fetch(`${API_BASE}/enroll/info`);
+        if (res.ok) {
+          enrollmentInfo = await res.json();
+          document.getElementById('enrollPinCode').textContent = enrollmentInfo.pin || '842019';
+          document.getElementById('publicIpBadge').textContent = `Public: ${enrollmentInfo.public_ip} | LAN: ${enrollmentInfo.lan_ip}`;
+          updateEnrollmentDisplay();
+        }
+      } catch (e) {
+        console.warn("[Himaya] Enrollment info fetch error:", e);
+      }
+    }
+
+    // WebSocket Stream Engine
+    function connectWebSocket() {
+      const pill = document.getElementById('hubStatusPill');
+      const text = document.getElementById('hubStatusText');
+
+      ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => {
+        pill.classList.remove('disconnected');
+        text.textContent = 'HUB CONNECTED';
+        showToast("Connected to live security stream", "success");
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.type === 'snapshot') {
+            if (payload.devices) devices = payload.devices;
+            renderDevices();
+            updateStatsCounters();
+          } else {
+            handleIncomingLiveEvent(payload);
+          }
+        } catch (e) {
+          console.error("[Himaya] WS parse error:", e);
+        }
+      };
+
+      ws.onclose = () => {
+        pill.classList.add('disconnected');
+        text.textContent = 'HUB RECONNECTING...';
+        setTimeout(connectWebSocket, 3000);
+      };
+    }
+
+    function handleIncomingLiveEvent(evt) {
+      events.unshift(evt);
+      if (events.length > 80) events.pop();
+
+      if (evt.type === 'dns_block') {
+        stats.dnsBlocks++;
+        recordTelemetryPoint('dns_block');
+      }
+      if (evt.type === 'vpn_attempt') {
+        stats.vpnAttempts++;
+        recordTelemetryPoint('vpn_attempt');
+        showToast(`Security Alert: VPN evasion on ${evt.device_id}!`, 'error');
+      }
+      if (evt.type === 'screenshot') {
+        recordTelemetryPoint('heartbeat');
+        showToast(`Screen snapshot received from ${evt.device_id}`, 'info');
+        loadSnapshots();
+      }
+      if (evt.type === 'heartbeat') {
+        recordTelemetryPoint('heartbeat');
+      }
+
+      // Update state of target device
+      const targetDev = devices.find(d => d.device_id === evt.device_id);
+      if (targetDev) {
+        if (evt.type === 'heartbeat') {
+          targetDev.last_seen = evt.timestamp;
+          if (targetDev.status !== 'locked' && targetDev.status !== 'paused') {
+            targetDev.status = 'online';
+          }
+        } else if (evt.type === 'device_locked') targetDev.status = 'locked';
+        else if (evt.type === 'device_unlocked') targetDev.status = 'online';
+        else if (evt.type === 'device_went_dark') targetDev.status = 'offline';
+      }
+
+      renderDevices();
+      renderEvents();
+      updateStatsCounters();
+      initIcons();
+    }
+
+    function updateStatsCounters() {
+      document.getElementById('statTotalDevices').textContent = devices.length;
+      const onlineCount = devices.filter(d => d.status === 'online').length;
+      document.getElementById('statOnlineDevices').textContent = onlineCount;
+      document.getElementById('statDnsBlocks').textContent = stats.dnsBlocks;
+      document.getElementById('statVpnAlarms').textContent = stats.vpnAttempts;
+    }
+
+    // UI Renderers
+    function renderDevices() {
+      const grid = document.getElementById('devicesGrid');
+      if (!devices || devices.length === 0) {
+        grid.innerHTML = `
+          <div style="grid-column: 1/-1; padding: 48px; text-align: center; background: var(--bg-glass-card); border-radius: var(--radius-lg); border: 1px dashed var(--border-subtle);">
+            <i data-lucide="shield-question" style="width: 36px; height: 36px; color: var(--text-muted); margin: 0 auto 12px auto; display: block;"></i>
+            <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-primary);">No Devices Enrolled Yet</h4>
+            <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 4px;">Click the button below to auto-enroll your first PC or smartphone.</p>
+            <button class="btn btn-primary" onclick="openEnrollModal()" style="margin-top: 16px;">
+              <i data-lucide="plus-circle" style="width: 16px; height: 16px;"></i>
+              Auto-Enroll First Device
+            </button>
+          </div>
+        `;
+        initIcons();
+        return;
+      }
+
+      grid.innerHTML = devices.map(d => {
+        const isOnline = d.status === 'online';
+        const isLocked = d.status === 'locked';
+        const isPaused = d.status === 'paused';
+        const statusClass = isLocked ? 'locked' : isPaused ? 'paused' : isOnline ? 'online' : 'offline';
+        const lastSeenText = d.last_seen ? formatTimeAgo(d.last_seen) : 'Never seen';
+        const platformIsWin = (d.platform || '').toLowerCase().includes('win');
+
+        // Brand SVG icons
+        const iconSvg = platformIsWin 
+          ? `<svg viewBox="0 0 88 88" width="20" height="20" fill="currentColor"><path d="M0 12.402l35.687-4.86.016 34.423-35.67.203zm35.67 33.529l.028 34.453L.028 75.48.01 45.719zm4.326-39.027L87.914 0v41.527l-47.918.378zm47.918 43.665l-.014 41.795-47.886-6.734V46.06z"/></svg>`
+          : `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993 0 .5511-.4483.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5902 8.4116 13.8533 8.0805 12 8.0805c-1.8534 0-3.5902.3311-5.1367.8692L4.841 5.4467a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396"/></svg>`;
+
+        return `
+          <div class="device-card ${statusClass}" id="card-${d.device_id}">
+            <div class="card-top">
+              <div class="card-identity">
+                <div class="device-icon-bubble">
+                  ${iconSvg}
+                </div>
+                <div class="device-title-area">
+                  <h3>${escapeHtml(d.name)}</h3>
+                  <div class="device-sub-tags">
+                    <span class="role-badge">${escapeHtml(d.owner_type || 'child')}</span>
+                    <span class="platform-badge">${(d.platform || 'WINDOWS').toUpperCase()}</span>
+                  </div>
+                </div>
+              </div>
+              <span class="state-indicator ${statusClass}">
+                <span class="pulse-dot" style="width: 5px; height: 5px;"></span>
+                ${d.status}
+              </span>
+            </div>
+
+            <div class="card-meta-box">
+              <div class="meta-row">
+                <span class="meta-key">Device ID</span>
+                <span class="meta-val copyable" onclick="copyText('${d.device_id}')" title="Click to copy">
+                  ${escapeHtml(d.device_id)}
+                  <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
+                </span>
+              </div>
+              <div class="meta-row">
+                <span class="meta-key">Network IP</span>
+                <span class="meta-val">${d.ip || '192.168.1.7'}</span>
+              </div>
+              <div class="meta-row">
+                <span class="meta-key">Last Heartbeat</span>
+                <span class="meta-val">${lastSeenText}</span>
+              </div>
+            </div>
+
+            <div class="protection-badges-row">
+              <span class="guard-chip ${isOnline ? 'active' : ''}">
+                <i data-lucide="shield-check" style="width: 12px; height: 12px;"></i>
+                DNS Sinkhole
+              </span>
+              <span class="guard-chip ${isOnline ? 'active' : ''}">
+                <i data-lucide="radio" style="width: 12px; height: 12px;"></i>
+                VPN Watchdog
+              </span>
+              <span class="guard-chip ${isOnline ? 'active' : ''}">
+                <i data-lucide="camera" style="width: 12px; height: 12px;"></i>
+                Screen Snapshots
+              </span>
+            </div>
+
+            <div class="card-action-bar">
+              ${isLocked ? `
+                <button class="action-btn unlock-trigger" onclick="dispatchAction('${d.device_id}', 'unlock')">
+                  <i data-lucide="unlock" style="width: 14px; height: 14px;"></i>
+                  Unlock
+                </button>
+              ` : `
+                <button class="action-btn lock-trigger" onclick="dispatchAction('${d.device_id}', 'lock')">
+                  <i data-lucide="lock" style="width: 14px; height: 14px;"></i>
+                  Lock Screen
+                </button>
+              `}
+
+              ${isPaused ? `
+                <button class="action-btn resume-trigger" onclick="dispatchAction('${d.device_id}', 'unpause')">
+                  <i data-lucide="play" style="width: 14px; height: 14px;"></i>
+                  Resume Net
+                </button>
+              ` : `
+                <button class="action-btn pause-trigger" onclick="dispatchAction('${d.device_id}', 'pause')">
+                  <i data-lucide="pause" style="width: 14px; height: 14px;"></i>
+                  Pause Net
+                </button>
+              `}
+
+              <button class="action-btn" onclick="openPushModal('${d.device_id}', '${escapeHtml(d.name)}')">
+                <i data-lucide="message-square" style="width: 14px; height: 14px;"></i>
+                Send Alert
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      initIcons();
+    }
+
+    function renderEvents() {
+      const container = document.getElementById('eventStreamFeed');
+      const filtered = events.filter(e => {
+        if (currentFilter === 'all') return true;
+        if (currentFilter === 'security') return e.type === 'vpn_attempt' || e.type === 'dns_block' || e.type === 'device_went_dark';
+        if (currentFilter === 'heartbeat') return e.type === 'heartbeat';
+        if (currentFilter === 'screenshot') return e.type === 'screenshot';
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; color: var(--text-muted); padding: 32px 16px;">
+            <i data-lucide="inbox" style="width: 24px; height: 24px; margin: 0 auto 8px auto; display: block; opacity: 0.5;"></i>
+            <span style="font-size: 0.8rem;">No events recorded in this category.</span>
+          </div>
+        `;
+        initIcons();
+        return;
+      }
+
+      container.innerHTML = filtered.slice(0, 30).map(e => {
+        let iconName = 'activity';
+        let typeClass = 'heartbeat';
+        let detail = '';
+
+        if (e.type === 'dns_block') {
+          iconName = 'shield-ban';
+          typeClass = 'dns';
+          detail = `Sinkholed threat query: ${e.data?.host || 'blocked-domain.com'}`;
+        } else if (e.type === 'vpn_attempt') {
+          iconName = 'alert-triangle';
+          typeClass = 'vpn';
+          detail = `Unauthorized VPN adapter detected: ${e.data?.interface || 'TUN0'}`;
+        } else if (e.type === 'screenshot') {
+          iconName = 'camera';
+          typeClass = 'screenshot';
+          detail = 'Screen snapshot securely ingested into timeline';
+        } else if (e.type === 'device_locked') {
+          iconName = 'lock';
+          typeClass = 'lock';
+          detail = 'Remote workstation lock executed via LockWorkStation()';
+        } else if (e.type === 'device_unlocked') {
+          iconName = 'unlock';
+          typeClass = 'unlock';
+          detail = 'Workstation session unlocked by parent';
+        } else if (e.type === 'heartbeat') {
+          iconName = 'activity';
+          typeClass = 'heartbeat';
+          detail = `Watchdog keepalive confirmed from IP: ${e.data?.ip || '192.168.1.7'}`;
+        } else if (e.type === 'device_went_dark') {
+          iconName = 'moon';
+          typeClass = 'vpn';
+          detail = 'Device missed 45s heartbeat window (offline or disconnected)';
+        } else {
+          detail = typeof e.data === 'object' ? JSON.stringify(e.data) : String(e.data || '');
+        }
+
+        return `
+          <div class="event-card">
+            <div class="event-icon-circle ${typeClass}">
+              <i data-lucide="${iconName}" style="width: 15px; height: 15px;"></i>
+            </div>
+            <div class="event-body">
+              <div class="event-top-line">
+                <span class="event-device-tag">${escapeHtml(e.device_id)}</span>
+                <span class="event-timestamp">${formatEventTime(e.timestamp)}</span>
+              </div>
+              <div class="event-detail-text">${escapeHtml(detail)}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      initIcons();
+    }
+
+    function setEventFilter(filter, btn) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      renderEvents();
+    }
+
+    // Snapshots Loader
+    async function loadSnapshots() {
+      const grid = document.getElementById('snapshotsGrid');
+      try {
+        const res = await fetch(`${API_BASE}/snapshots`);
+        if (res.ok) {
+          snapshots = await res.json();
+          if (snapshots.length === 0) {
+            grid.innerHTML = `
+              <div style="grid-column: 1/-1; padding: 48px; text-align: center; color: var(--text-muted);">
+                <i data-lucide="camera-off" style="width: 32px; height: 32px; margin: 0 auto 10px auto; display: block; opacity: 0.5;"></i>
+                <p>No screen snapshots recorded yet. Scheduled captures appear automatically when the agent runs.</p>
+              </div>
+            `;
+            initIcons();
+            return;
+          }
+
+          grid.innerHTML = snapshots.map(s => `
+            <div class="snapshot-item" onclick="openLightbox('${s.url}', '${s.device_id}', '${s.timestamp}')">
+              <div class="snapshot-thumb-wrap">
+                <img src="${s.url}" alt="Desktop Screen Capture" loading="lazy" />
+                <div class="snapshot-overlay">
+                  <i data-lucide="zoom-in" style="width: 24px; height: 24px;"></i>
+                </div>
+              </div>
+              <div class="snapshot-info-bar">
+                <span class="snapshot-device-name">${escapeHtml(s.device_id)}</span>
+                <span class="snapshot-time-label">${formatEventTime(s.timestamp)}</span>
+              </div>
+            </div>
+          `).join('');
+
+          initIcons();
+        }
+      } catch (e) {
+        console.warn("[Himaya] Snapshot load error:", e);
+      }
+    }
+
+    // Tab Switching
+    function switchMainTab(tab) {
+      document.querySelectorAll('.segmented-tabs .nav-tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-view-container').forEach(v => v.classList.remove('active'));
+
+      if (tab === 'fleet') {
+        document.getElementById('tabBtnFleet').classList.add('active');
+        document.getElementById('viewFleet').classList.add('active');
+      } else if (tab === 'snapshots') {
+        document.getElementById('tabBtnSnapshots').classList.add('active');
+        document.getElementById('viewSnapshots').classList.add('active');
+        loadSnapshots();
+      } else if (tab === 'rules') {
+        document.getElementById('tabBtnRules').classList.add('active');
+        document.getElementById('viewRules').classList.add('active');
+      }
+    }
+
+    // Modal Operations
+    function openEnrollModal() {
+      document.getElementById('enrollModal').classList.add('open');
+      fetchEnrollmentInfo();
+    }
+
+    function closeEnrollModal() {
+      document.getElementById('enrollModal').classList.remove('open');
+    }
+
+    function switchEnrollTarget(target) {
+      enrollTarget = target;
+      document.getElementById('subtabInternet').classList.toggle('active', target === 'internet');
+      document.getElementById('subtabLan').classList.toggle('active', target === 'lan');
+      updateEnrollmentDisplay();
+    }
+
+    function switchEnrollPlatform(plat) {
+      enrollPlatform = plat;
+      document.getElementById('subtabWin').classList.toggle('active', plat === 'windows');
+      document.getElementById('subtabAndroid').classList.toggle('active', plat === 'android');
+      document.getElementById('enrollContentWin').style.display = plat === 'windows' ? 'flex' : 'none';
+      document.getElementById('enrollContentAndroid').style.display = plat === 'android' ? 'flex' : 'none';
+      updateEnrollmentDisplay();
+    }
+
+    function updateEnrollmentDisplay() {
+      if (!enrollmentInfo) return;
+      const targetObj = enrollmentInfo[enrollTarget] || enrollmentInfo.lan;
+      
+      // Update Windows PowerShell Command
+      document.getElementById('enrollCommandText').textContent = targetObj.windows_cmd;
+      
+      // Update Android QR & Mobile URL
+      const qrTargetParam = enrollTarget === 'lan' ? '?target=lan' : '?target=internet';
+      document.getElementById('enrollQrImg').src = `/enroll/qr${qrTargetParam}&t=${Date.now()}`;
+      document.getElementById('enrollMobileUrlText').textContent = targetObj.mobile_url;
+    }
+
+    function copyEnrollCommand() {
+      const text = document.getElementById('enrollCommandText').textContent.trim();
+      navigator.clipboard.writeText(text);
+      const btn = document.getElementById('copyCmdBtnText');
+      btn.textContent = 'Command Copied to Clipboard!';
+      showToast("PowerShell command copied to clipboard", "success");
+      setTimeout(() => { btn.textContent = 'Copy 1-Click Command'; }, 2500);
+    }
+
+    async function saveCustomPublicUrl() {
+      const val = document.getElementById('customPublicUrlInput').value.trim();
+      if (!val) return;
+      try {
+        const res = await fetch(`${API_BASE}/enroll/public-url`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ public_url: val })
+        });
+        if (res.ok) {
+          showToast("Remote Cloudflare/Public URL persisted", "success");
+          fetchEnrollmentInfo();
+        }
+      } catch (e) {
+        showToast("Failed to save custom URL: " + e.message, "error");
+      }
+    }
+
+    // Actions & Remote Commands
+    async function dispatchAction(deviceId, action, payload = {}) {
+      try {
+        const res = await fetch(`${API_BASE}/admin/${deviceId}/action`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, payload })
+        });
+        if (res.ok) {
+          showToast(`Dispatched '${action}' command to ${deviceId}`, "success");
+        } else {
+          showToast(`Error dispatching action: HTTP ${res.status}`, "error");
+        }
+      } catch (e) {
+        showToast(`Failed to dispatch action: ${e.message}`, "error");
+      }
+    }
+
+    function lockAllDevicesPrompt() {
+      if (confirm("Are you sure you want to trigger immediate screen lockdown across ALL managed children devices?")) {
+        devices.forEach(d => dispatchAction(d.device_id, 'lock'));
+      }
+    }
+
+    function openPushModal(deviceId, name) {
+      targetDeviceIdForAction = deviceId;
+      document.getElementById('pushModalTitle').textContent = `Alert ${name}`;
+      document.getElementById('pushModal').classList.add('open');
+      document.getElementById('pushMessageInput').focus();
+    }
+
+    function closePushModal() {
+      document.getElementById('pushModal').classList.remove('open');
+      targetDeviceIdForAction = null;
+    }
+
+    function submitPushAction() {
+      const msg = document.getElementById('pushMessageInput').value.trim();
+      if (!msg || !targetDeviceIdForAction) return;
+      dispatchAction(targetDeviceIdForAction, 'push_notification', { message: msg });
+      closePushModal();
+      document.getElementById('pushMessageInput').value = '';
+    }
+
+    // Lightbox
+    function openLightbox(url, deviceId, timestamp) {
+      document.getElementById('lightboxImg').src = url;
+      document.getElementById('lightboxMetaText').textContent = `Device: ${deviceId} • Captured: ${new Date(timestamp).toLocaleString()}`;
+      document.getElementById('lightboxModal').classList.add('open');
+    }
+
+    function closeLightbox() {
+      document.getElementById('lightboxModal').classList.remove('open');
+    }
+
+    // Rules Policy Saving
+    async function savePolicyRules() {
+      const blockedCats = [];
+      if (document.getElementById('ruleCatAdult').checked) blockedCats.push('adult');
+      if (document.getElementById('ruleCatGambling').checked) blockedCats.push('gambling');
+      if (document.getElementById('ruleCatSocial').checked) blockedCats.push('social');
+      if (document.getElementById('ruleCatGaming').checked) blockedCats.push('gaming');
+
+      const rawDomains = document.getElementById('customDomainsTextarea').value
+        .split('\n')
+        .map(d => d.trim())
+        .filter(Boolean);
+
+      const payload = {
+        blocked_categories: blockedCats,
+        blocked_domains: rawDomains,
+        bedtime_enabled: document.getElementById('bedtimeToggle').checked,
+        bedtime_start: document.getElementById('bedtimeStart').value,
+        bedtime_end: document.getElementById('bedtimeEnd').value
+      };
+
+      for (const dev of devices) {
+        await fetch(`${API_BASE}/rules/${dev.device_id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      }
+
+      showToast("Policy rules updated and deployed to all devices", "success");
+    }
+
+    // Diagnostic Simulation Functions
+    function triggerSimulatedHeartbeat() {
+      if (devices.length === 0) return;
+      const target = devices[0].device_id;
+      fetch(`${API_BASE}/agents/${target}/heartbeat`, { method: 'POST' });
+      showToast(`Heartbeat simulated for ${target}`, "info");
+    }
+
+    function triggerSimulatedDnsBlock() {
+      if (devices.length === 0) return;
+      const target = devices[0].device_id;
+      // Triggers DNS block event via WebSocket directly or REST
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'test_dns_block', device_id: target }));
+      }
+      showToast(`DNS threat blocked for ${target}`, "info");
+    }
+
+    function triggerSimulatedVpnAlarm() {
+      if (devices.length === 0) return;
+      const target = devices[0].device_id;
+      fetch(`${API_BASE}/agents/${target}/vpn-attempt?interface=WireGuard-Tunnel`, { method: 'POST' });
+      showToast(`VPN evasion breach triggered for ${target}`, "error");
+    }
+
+    // Toast Manager
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast-item ${type}`;
+
+      let icon = 'info';
+      if (type === 'success') icon = 'check-circle-2';
+      else if (type === 'error') icon = 'alert-octagon';
+
+      toast.innerHTML = `
+        <i data-lucide="${icon}" style="width: 18px; height: 18px; flex-shrink: 0;"></i>
+        <span>${escapeHtml(message)}</span>
+      `;
+      container.appendChild(toast);
+      initIcons();
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        toast.style.transition = 'all 0.25s ease';
+        setTimeout(() => toast.remove(), 250);
+      }, 3500);
+    }
+
+    // Helpers
+    function copyText(str) {
+      navigator.clipboard.writeText(str);
+      showToast(`Copied "${str}" to clipboard`, "info");
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function formatTimeAgo(isoString) {
+      try {
+        const diff = Math.floor((new Date() - new Date(isoString)) / 1000);
+        if (diff < 5) return 'Just now';
+        if (diff < 60) return `${diff}s ago`;
+        if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+        return `${Math.floor(diff / 3600)}h ago`;
+      } catch (e) {
+        return 'Recently';
+      }
+    }
+
+    function formatEventTime(isoString) {
+      try {
+        const d = new Date(isoString);
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      } catch (e) {
+        return '--:--:--';
+      }
+    }
+  </script>
+</body>
+</html>

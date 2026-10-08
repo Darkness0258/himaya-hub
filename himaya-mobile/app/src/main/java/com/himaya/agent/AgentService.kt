@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.app.admin.DevicePolicyManager
+import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -176,8 +177,23 @@ class AgentService : Service() {
                 "unpause", "unblock_internet" -> {
                     updateNotificationText("Himaya Active — Safety shield enabled")
                 }
+                "snapshot" -> {
+                    requestScreenCapture()
+                }
             }
         }
+    }
+
+    private fun requestScreenCapture() {
+        // Request MediaProjection permission from user
+        val mpm = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        val intent = mpm.createScreenCaptureIntent()
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(intent)
+
+        // Note: The result will be handled by MainActivity.onActivityResult
+        // which will call ScreenShareService.onMediaProjectionResult
+        Log.i(TAG, "Screen capture requested - waiting for user consent")
     }
 
     private fun checkUnauthorizedVpn() {

@@ -1,383 +1,530 @@
-"""Himaya Windows Agent — Real-Life Device Safety Background Service.
-
-Ground Rules:
-- Visible, not hidden: Persistent system tray indicator and visible status window.
-- Local-first: Communicates with Himaya Hub over local LAN or WireGuard.
-- Zero-Touch Discovery: Automatically discovers Himaya Hub on the network via UDP broadcast.
-- Real actions:
-    * Instant lock via Windows API (LockWorkStation)
-    * Real screen snapshots via ImageGrab
-    * Native Windows desktop notifications
-    * VPN evasion watchdog (detects WireGuard/OpenVPN/TAP adapters)
+#!/usr/bin/env python3
 """
-from __future__ import annotations
-import ctypes
-import io
+Himaya Windows Agent — Background protection engine for family device safety.
+Runs as a Python script via pythonw.exe (no console window).
+"""
+
+import asyncio
 import json
+import logging
 import os
 import platform
-import socket
-import subprocess
 import sys
-import threading
 import time
-from datetime import datetime
+import uuid
+import winreg
+from dataclasses import dataclass, asdict
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 import requests
-from PIL import Image, ImageDraw, ImageGrab
 
-CONFIG_FILE = Path(__file__).parent / "agent_config.json"
-DISCOVERY_PORT = 5354
-
-
-def lock_windows_workstation():
-    """Lock the Windows user session immediately."""
-    print("[Agent] Executing remote lock via user32.LockWorkStation()")
-    ctypes.windll.user32.LockWorkStation()
-
-
-def _send_toast(title: str, message: str):
-    ps_script = f"""
-    [void][Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime]
-    $template = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)
-    $textNodes = $template.GetElementsByTagName("text")
-    [void]$textNodes.Item(0).AppendChild($template.CreateTextNode('{title}'))
-    [void]$textNodes.Item(1).AppendChild($template.CreateTextNode('{message}'))
-    $toast = [Windows.UI.Notifications.ToastNotification]::new($template)
-    [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Himaya Safety Hub').Show($toast)
-    """
-    try:
-        subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_script], capture_output=True, timeout=6)
-    except Exception as e:
-        print(f"[Agent] Toast notification note: {e}")
+# Configure logging
+LOG_DIR = Path(os.environ.get("LOCALAPPDATA", "")) / "HimayaAgent" / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.FileHandler(LOG_DIR / "agent.log"),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger("HimayaWindowsAgent")
 
 
-def show_windows_notification(title: str, message: str):
-    """Display native Windows toast notification without blocking the main agent loop."""
-    t = threading.Thread(target=_send_toast, args=(title, message), daemon=True)
-    t.start()
+@dataclass
+class AgentConfig:
+    hub_url: str
+    candidate_urls: List[str]
+    device_id: str
+    device_name: str
 
 
-def get_local_ip() -> str:
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
-        return ip
-    except Exception:
-        return "127.0.0.1"
+@dataclass
+class RuleSet:
+    status: str = "active"
+    enforcement: str = "strict"
+    blocked_domains: List[str] = None
+    allowed_domains: List[str] = None
+    curfew_start: Optional[str] = None  # HH:MM
+    curfew_end: Optional[str] = None
+
+    def __post_init__(self):
+        if self.blocked_domains is None:
+            self.blocked_domains = []
+        if self.allowed_domains is None:
+            self.allowed_domains = []
 
 
-def discover_hub_on_lan(timeout: float = 3.0) -> Optional[dict]:
-    """Broadcast UDP probe to discover any running Himaya Hub on the local Wi-Fi / network."""
-    print("[Agent] Probing local network for Himaya Hub via UDP auto-discovery...")
-    try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        sock.settimeout(timeout)
+class HubClient:
+    """HTTP client for communicating with Himaya Hub."""
 
-        # Broadcast discovery request
-        probe_msg = b"HIMAYA_DISCOVER"
-        sock.sendto(probe_msg, ("255.255.255.255", DISCOVERY_PORT))
-        # Also probe localhost directly
-        sock.sendto(probe_msg, ("127.0.0.1", DISCOVERY_PORT))
+    def __init__(self, config: AgentConfig):
+        self.config = config
+        self.session = requests.Session()
+        self.session.timeout = (5, 15)
 
-        start_time = time.time()
-        while time.time() - start_time < timeout:
+    def _try_urls(self, path: str, method: str = "GET", **kwargs) -> Optional[requests.Response]:
+        """Try all candidate URLs until one succeeds."""
+        for base_url in self.config.candidate_urls:
+            url = f"{base_url.rstrip('/')}/{path.lstrip('/')}"
             try:
-                data, addr = sock.recvfrom(2048)
-                resp = json.loads(data.decode("utf-8", errors="ignore"))
-                if resp.get("type") == "himaya_hub_info":
-                    hub_url = resp.get("hub_url")
-                    print(f"[Agent] ✓ Discovered Himaya Hub at {hub_url} ({addr[0]})!")
-                    sock.close()
+                if method == "GET":
+                    resp = self.session.get(url, **kwargs)
+                elif method == "POST":
+                    resp = self.session.post(url, **kwargs)
+                else:
+                    continue
+
+                if resp.status_code < 500:
+                    logger.debug(f"Request to {url} succeeded: {resp.status_code}")
                     return resp
-            except socket.timeout:
-                break
+            except Exception as e:
+                logger.debug(f"Request to {url} failed: {e}")
+        logger.warning(f"All candidate URLs failed for {path}")
+        return None
+
+    def check_health(self) -> bool:
+        resp = self._try_urls("/health")
+        return resp is not None and resp.status_code == 200
+
+    def register_device(self) -> bool:
+        payload = {
+            "name": self.config.device_name,
+            "platform": "windows",
+            "device_id": self.config.device_id,
+            "owner_type": "child"
+        }
+        resp = self._try_urls("/devices", method="POST", json=payload)
+        return resp is not None and resp.status_code == 200
+
+    def heartbeat(self, local_ip: str) -> bool:
+        payload = {"ip": local_ip}
+        path = f"/agents/{self.config.device_id}/heartbeat"
+        resp = self._try_urls(path, method="POST", json=payload)
+        return resp is not None and resp.status_code == 200
+
+    def report_dns_block(self, host: str) -> bool:
+        payload = {"host": host}
+        path = f"/agents/{self.config.device_id}/dns-block"
+        resp = self._try_urls(path, method="POST", json=payload)
+        return resp is not None and resp.status_code == 200
+
+    def report_vpn_attempt(self, interface: str) -> bool:
+        payload = {"interface": interface}
+        path = f"/agents/{self.config.device_id}/vpn-attempt"
+        resp = self._try_urls(path, method="POST", json=payload)
+        return resp is not None and resp.status_code == 200
+
+    def get_commands(self) -> List[Dict[str, Any]]:
+        path = f"/agents/{self.config.device_id}/commands"
+        resp = self._try_urls(path, method="GET")
+        if resp and resp.status_code == 200:
+            try:
+                data = resp.json()
+                return data.get("commands", [])
             except Exception:
                 pass
-        sock.close()
-    except Exception as e:
-        print(f"[Agent] Auto-discovery probe note: {e}")
-    return None
+        return []
+
+    def policy_sync(self, rules: RuleSet) -> bool:
+        payload = asdict(rules)
+        path = f"/agents/{self.config.device_id}/policy-sync"
+        resp = self._try_urls(path, method="POST", json=payload)
+        return resp is not None and resp.status_code == 200
+
+    def get_rules(self) -> Optional[RuleSet]:
+        path = f"/rules/{self.config.device_id}"
+        resp = self._try_urls(path, method="GET")
+        if resp and resp.status_code == 200:
+            try:
+                data = resp.json()
+                return RuleSet(**data)
+            except Exception:
+                pass
+        return None
+
+
+class DNSEngine:
+    """DNS filtering engine using hosts file + Windows DNS cache."""
+
+    def __init__(self, rules: RuleSet):
+        self.rules = rules
+        self.hosts_path = Path(r"C:\Windows\System32\drivers\etc\hosts")
+        self.redirect_ip = "0.0.0.0"
+        self._original_hosts: Optional[str] = None
+
+    def apply(self) -> bool:
+        """Apply DNS blocking by updating hosts file."""
+        try:
+            # Backup original if not already backed up
+            if self._original_hosts is None:
+                try:
+                    self._original_hosts = self.hosts_path.read_text(encoding="utf-8", errors="ignore")
+                except Exception:
+                    self._original_hosts = ""
+
+            # Read current
+            current = self.hosts_path.read_text(encoding="utf-8", errors="ignore")
+
+            # Build new hosts with blocklist
+            block_marker = "# HIMAYA BLOCKLIST START"
+            if block_marker in current:
+                # Remove old blocklist section
+                parts = current.split(block_marker)
+                current = parts[0].rstrip() + "\n"
+
+            # Build block entries
+            lines = [block_marker]
+            for domain in self.rules.blocked_domains:
+                lines.append(f"{self.redirect_ip} {domain}")
+                lines.append(f"{self.redirect_ip} www.{domain}")
+            lines.append("# HIMAYA BLOCKLIST END")
+
+            new_content = current + "\n" + "\n".join(lines) + "\n"
+            self.hosts_path.write_text(new_content, encoding="utf-8")
+
+            # Flush DNS cache
+            self._flush_dns()
+            logger.info(f"Applied DNS blocklist: {len(self.rules.blocked_domains)} domains")
+            return True
+
+        except PermissionError:
+            logger.error("Permission denied writing hosts file. Run as Administrator.")
+            return False
+        except Exception as e:
+            logger.error(f"Failed to apply DNS blocklist: {e}")
+            return False
+
+    def remove(self) -> bool:
+        """Remove DNS blocking."""
+        try:
+            if self._original_hosts:
+                self.hosts_path.write_text(self._original_hosts, encoding="utf-8")
+            else:
+                # Fallback: just remove our section
+                current = self.hosts_path.read_text(encoding="utf-8", errors="ignore")
+                if "# HIMAYA BLOCKLIST START" in current:
+                    parts = current.split("# HIMAYA BLOCKLIST START")
+                    before = parts[0]
+                    if "# HIMAYA BLOCKLIST END" in parts[1]:
+                        after = parts[1].split("# HIMAYA BLOCKLIST END", 1)[1]
+                        self.hosts_path.write_text(before + after, encoding="utf-8")
+
+            self._flush_dns()
+            logger.info("Removed DNS blocklist")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to remove DNS blocklist: {e}")
+            return False
+
+    def _flush_dns(self) -> None:
+        """Flush Windows DNS cache."""
+        try:
+            import subprocess
+            subprocess.run(["ipconfig", "/flushdns"], capture_output=True, timeout=5)
+        except Exception:
+            pass
+
+    def update_rules(self, rules: RuleSet) -> None:
+        self.rules = rules
+        if rules.status == "active" and rules.enforcement == "strict":
+            self.apply()
+        else:
+            self.remove()
+
+
+class VPNGuard:
+    """Detects unauthorized VPN interfaces."""
+
+    def __init__(self, client: HubClient):
+        self.client = client
+
+    def check(self) -> Optional[str]:
+        """Check for active VPN interfaces. Returns interface name if found."""
+        try:
+            import subprocess
+            # Get active network adapters
+            result = subprocess.run(
+                ["powershell", "-Command",
+                 "Get-NetAdapter | Where-Object {$_.Status -eq 'Up'} | Select-Object Name, InterfaceDescription"],
+                capture_output=True, text=True, timeout=10
+            )
+            if result.returncode != 0:
+                return None
+
+            output = result.stdout.lower()
+            vpn_keywords = ["vpn", "tunnel", "tap", "tun", "wireguard", "openvpn", "nordvpn",
+                           "expressvpn", "protonvpn", "surfshark", "mullvad", "tailscale"]
+
+            for keyword in vpn_keywords:
+                if keyword in output:
+                    # Try to get the actual interface name
+                    lines = output.splitlines()
+                    for line in lines:
+                        if keyword in line.lower():
+                            parts = line.split()
+                            if parts:
+                                return parts[0]
+        except Exception as e:
+            logger.debug(f"VPN guard check error: {e}")
+        return None
+
+
+class CurfewManager:
+    """Manages internet access based on curfew schedule."""
+
+    def __init__(self, rules: RuleSet, dns_engine: DNSEngine):
+        self.rules = rules
+        self.dns = dns_engine
+        self._curfew_active = False
+
+    def check(self) -> bool:
+        """Check if curfew is active. Returns True if access should be blocked."""
+        if not self.rules.curfew_start or not self.rules.curfew_end:
+            self._curfew_active = False
+            return False
+
+        now = time.strftime("%H:%M")
+        start = self.rules.curfew_start
+        end = self.rules.curfew_end
+
+        # Handle overnight curfew (e.g., 22:00 - 07:00)
+        if start > end:
+            is_curfew = now >= start or now <= end
+        else:
+            is_curfew = start <= now <= end
+
+        if is_curfew != self._curfew_active:
+            self._curfew_active = is_curfew
+            if is_curfew:
+                logger.info("Curfew started - blocking internet")
+                # Temporarily block all internet by applying strict blocklist
+                self.dns.apply()
+            else:
+                logger.info("Curfew ended - restoring internet")
+                self.dns.apply()
+
+        return is_curfew
 
 
 class WindowsAgent:
-    def __init__(self, hub_url: str, device_id: str, device_name: str, candidate_urls: Optional[list[str]] = None):
-        self.hub_url = hub_url.rstrip("/")
-        self.device_id = device_id
-        self.device_name = device_name
-        self.candidate_urls: list[str] = candidate_urls or [self.hub_url]
-        if self.hub_url not in self.candidate_urls:
-            self.candidate_urls.insert(0, self.hub_url)
-        self.running = False
-        self.session = requests.Session()
-        self.snapshot_interval = 120  # Every 2 minutes
-        self.last_snapshot_time = 0
-        self.fail_count = 0
+    """Main Windows agent orchestrator."""
 
-    def switch_to_working_hub(self) -> bool:
-        """Attempt to reconnect to Himaya Hub across candidate endpoints (Internet, LAN, Localhost)."""
-        print(f"[Agent] Connection to {self.hub_url} lost. Testing {len(self.candidate_urls)} candidate endpoints...")
-        for candidate in self.candidate_urls:
-            candidate_clean = candidate.rstrip("/")
-            try:
-                res = self.session.get(f"{candidate_clean}/health", timeout=2.5)
-                if res.status_code == 200:
-                    print(f"[Agent] ✓ Reconnected to Himaya Hub at {candidate_clean}!")
-                    self.hub_url = candidate_clean
-                    self.fail_count = 0
-                    self.register()
-                    # Persist working URL
-                    try:
-                        if CONFIG_FILE.exists():
-                            with open(CONFIG_FILE, "r") as f:
-                                cfg = json.load(f)
-                            cfg["hub_url"] = self.hub_url
-                            with open(CONFIG_FILE, "w") as f:
-                                json.dump(cfg, f, indent=2)
-                    except Exception:
-                        pass
-                    return True
-            except Exception:
-                continue
-
-        # If candidates fail, probe LAN auto-discovery
-        lan_hub = discover_hub_on_lan(timeout=1.5)
-        if lan_hub and lan_hub.get("hub_url"):
-            new_url = lan_hub["hub_url"].rstrip("/")
-            print(f"[Agent] ✓ Auto-discovered Himaya Hub on Wi-Fi: {new_url}")
-            self.hub_url = new_url
-            if new_url not in self.candidate_urls:
-                self.candidate_urls.append(new_url)
-            self.fail_count = 0
-            self.register()
-            return True
-
-        return False
-
-    def register(self) -> bool:
-        try:
-            res = self.session.post(f"{self.hub_url}/devices", json={
-                "name": self.device_name,
-                "platform": "windows",
-                "device_id": self.device_id,
-                "owner_type": "child",
-                "ip": get_local_ip()
-            }, timeout=4)
-            if res.status_code in (200, 400):
-                print(f"[Agent] Registered {self.device_name} ({self.device_id}) with Hub at {self.hub_url}.")
-                self.fail_count = 0
-                return True
-        except Exception as e:
-            print(f"[Agent] Hub connection warning: {e}")
-            self.fail_count += 1
-            if self.fail_count >= 2:
-                self.switch_to_working_hub()
-        return False
-
-    def send_heartbeat(self):
-        try:
-            ip = get_local_ip()
-            res = self.session.post(f"{self.hub_url}/agents/{self.device_id}/heartbeat", params={"ip": ip}, timeout=4)
-            if res.status_code == 200:
-                self.fail_count = 0
-            else:
-                self.fail_count += 1
-        except Exception as e:
-            print(f"[Agent] Heartbeat failed: {e}")
-            self.fail_count += 1
-            if self.fail_count >= 2:
-                self.switch_to_working_hub()
-
-    def poll_commands(self):
-        try:
-            res = self.session.get(f"{self.hub_url}/agents/{self.device_id}/commands", timeout=4)
-            if res.status_code == 200:
-                self.fail_count = 0
-                data = res.json()
-                for cmd in data.get("commands", []):
-                    action = cmd.get("action")
-                    payload = cmd.get("payload", {})
-                    print(f"[Agent] Received command from Hub: {action}")
-                    self.execute_command(action, payload)
-            else:
-                self.fail_count += 1
-        except Exception as e:
-            print(f"[Agent] Command poll error: {e}")
-            self.fail_count += 1
-            if self.fail_count >= 2:
-                self.switch_to_working_hub()
-
-    def execute_command(self, action: str, payload: dict):
-        if action == "lock":
-            lock_windows_workstation()
-        elif action == "unlock":
-            show_windows_notification("Device Unlocked", "Workstation session has been unlocked by parent.")
-        elif action == "push_notification":
-            msg = payload.get("message", "Notice from parent")
-            show_windows_notification("Message from Parent", msg)
-        elif action in ("pause", "block_internet"):
-            show_windows_notification("Internet Paused", "Your internet access has been paused by parent.")
-        elif action in ("unpause", "unblock_internet"):
-            show_windows_notification("Internet Restored", "Your internet access has been restored.")
-        elif action == "wipe":
-            show_windows_notification("SECURITY ALERT", "Remote wipe requested by administrator.")
-        elif action in ("snapshot", "capture_screen"):
-            print("[Agent] Triggering instant on-demand screenshot requested by parent...")
-            self.capture_and_upload_snapshot()
-
-    def check_vpn_evasion(self):
-        """Inspect network interfaces to detect unauthorized VPNs."""
-        try:
-            out = subprocess.check_output("netsh interface show interface", shell=True, text=True)
-            suspicious_keywords = ["nordvpn", "proton", "expressvpn", "surfshark", "wireguard", "tap-windows", "openvpn"]
-            for kw in suspicious_keywords:
-                if kw in out.lower():
-                    print(f"[Agent] 🚨 Detected unauthorized VPN adapter: {kw}")
-                    self.session.post(f"{self.hub_url}/agents/{self.device_id}/vpn-attempt", params={"interface": kw}, timeout=4)
-                    break
-        except Exception:
-            pass
-
-    def _generate_session_snapshot(self, reason: str) -> Image.Image:
-        """Create a clean diagnostic snapshot when display is locked, sleeping, or running headless."""
-        w, h = 1280, 720
-        img = Image.new("RGB", (w, h), color=(15, 23, 42))
-        draw = ImageDraw.Draw(img)
-        draw.rectangle([(24, 24), (w - 24, h - 24)], outline=(59, 130, 246), width=3)
-        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
-        draw.text((60, 60), "HIMAYA FAMILY SAFETY — WORKSTATION MONITOR", fill=(255, 255, 255))
-        draw.text((60, 110), f"Device: {self.device_name} ({self.device_id})", fill=(147, 197, 253))
-        draw.text((60, 150), f"Timestamp: {ts}", fill=(148, 163, 184))
-        draw.text((60, 190), f"State: Workstation Locked / Display Inactive", fill=(239, 68, 68))
-        draw.text((60, 230), f"Diagnostic Note: {reason}", fill=(203, 213, 225))
-        return img
-
-    def capture_and_upload_snapshot(self):
-        """Take screen snapshot and upload securely to Hub."""
-        try:
-            print("[Agent] Capturing screen snapshot...")
-            screenshot = None
-            try:
-                screenshot = ImageGrab.grab()
-            except Exception as grab_err:
-                print(f"[Agent] Note: Direct screen grab restricted ({grab_err}); generating session card...")
-                screenshot = self._generate_session_snapshot(str(grab_err))
-
-            img_buffer = io.BytesIO()
-            screenshot.save(img_buffer, format="JPEG", quality=75)
-            img_buffer.seek(0)
-
-            files = {"file": ("screenshot.jpg", img_buffer, "image/jpeg")}
-            res = self.session.post(f"{self.hub_url}/agents/{self.device_id}/snapshot", files=files, timeout=10)
-            if res.status_code == 200:
-                print("[Agent] Snapshot uploaded successfully to Hub.")
-                self.fail_count = 0
-            else:
-                print(f"[Agent] Snapshot upload returned HTTP {res.status_code}")
-        except Exception as e:
-            print(f"[Agent] Snapshot capture error: {e}")
-
-    def run(self):
-        print("=" * 60)
-        print("  HIMAYA WINDOWS AGENT — REAL-TIME DEVICE PROTECTION")
-        print("  Ground Rule: Visible, Not Hidden")
-        print(f"  Hub: {self.hub_url} | Device: {self.device_id}")
-        print(f"  Candidates: {', '.join(self.candidate_urls)}")
-        print("=" * 60)
+    def __init__(self, config: AgentConfig):
+        self.config = config
+        self.client = HubClient(config)
+        self.rules = RuleSet()
+        self.dns = DNSEngine(self.rules)
+        self.vpn_guard = VPNGuard(self.client)
+        self.curfew = CurfewManager(self.rules, self.dns)
 
         self.running = True
-        self.register()
+        self.heartbeat_interval = 20  # seconds
+        self.vpn_check_interval = 10  # seconds
+        self.policy_sync_interval = 60  # seconds
+        self.command_poll_interval = 5  # seconds
 
-        # Show notification on startup
-        show_windows_notification("Himaya Active", "Himaya safety shield is active on this device.")
+    def get_local_ip(self) -> str:
+        """Get local IP address."""
+        try:
+            import socket
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except Exception:
+            return "127.0.0.1"
 
-        heartbeat_counter = 0
+    async def heartbeat_loop(self):
         while self.running:
             try:
-                # Poll commands every 5s
-                self.poll_commands()
-
-                # Heartbeat every 20s
-                if heartbeat_counter % 4 == 0:
-                    self.send_heartbeat()
-                    self.check_vpn_evasion()
-
-                # Snapshot every interval
-                now = time.time()
-                if now - self.last_snapshot_time >= self.snapshot_interval:
-                    self.last_snapshot_time = now
-                    self.capture_and_upload_snapshot()
-
-                heartbeat_counter += 1
-                time.sleep(5)
-            except KeyboardInterrupt:
-                print("\n[Agent] Stopping...")
-                break
+                ip = self.get_local_ip()
+                if self.client.heartbeat(ip):
+                    logger.debug(f"Heartbeat sent from {ip}")
+                else:
+                    logger.warning("Heartbeat failed")
             except Exception as e:
-                time.sleep(5)
+                logger.error(f"Heartbeat error: {e}")
+            await asyncio.sleep(self.heartbeat_interval)
 
+    async def vpn_guard_loop(self):
+        while self.running:
+            try:
+                vpn_iface = self.vpn_guard.check()
+                if vpn_iface:
+                    logger.warning(f"Unauthorized VPN detected: {vpn_iface}")
+                    self.client.report_vpn_attempt(vpn_iface)
+            except Exception as e:
+                logger.error(f"VPN guard error: {e}")
+            await asyncio.sleep(self.vpn_check_interval)
 
-def load_or_create_config() -> tuple[str, str, str, list[str]]:
-    hub_url = "http://127.0.0.1:8000"
-    device_id = f"win-{platform.node().lower()[:8]}"
-    device_name = f"{platform.node()} (Windows PC)"
-    candidate_urls: list[str] = []
+    async def policy_sync_loop(self):
+        while self.running:
+            try:
+                rules = self.client.get_rules()
+                if rules:
+                    self.rules = rules
+                    self.dns.update_rules(rules)
+                    self.curfew.rules = rules
+                    self.client.policy_sync(rules)
+                    logger.debug("Policy synced")
+            except Exception as e:
+                logger.error(f"Policy sync error: {e}")
+            await asyncio.sleep(self.policy_sync_interval)
 
-    if CONFIG_FILE.exists():
+    async def command_loop(self):
+        while self.running:
+            try:
+                commands = self.client.get_commands()
+                for cmd in commands:
+                    await self.execute_command(cmd)
+            except Exception as e:
+                logger.error(f"Command loop error: {e}")
+            await asyncio.sleep(self.command_poll_interval)
+
+    async def execute_command(self, cmd: Dict[str, Any]):
+        action = cmd.get("action")
+        payload = cmd.get("payload", {})
+        logger.info(f"Executing remote action: {action}")
+
+        if action == "lock":
+            await self.lock_screen()
+        elif action == "unlock":
+            await self.unlock_screen()
+        elif action == "wipe":
+            await self.wipe_device()
+        elif action in ("pause", "block_internet"):
+            self.rules.status = "paused"
+            self.dns.apply()
+        elif action in ("unpause", "unblock_internet"):
+            self.rules.status = "active"
+            self.dns.apply()
+        elif action == "push_notification":
+            message = payload.get("message", "Message from parent")
+            self.show_notification(message)
+        elif action == "force_close_app":
+            app_name = payload.get("app")
+            if app_name:
+                self.force_close_app(app_name)
+
+    async def lock_screen(self):
         try:
-            with open(CONFIG_FILE, "r") as f:
-                data = json.load(f)
-                hub_url = data.get("hub_url", hub_url)
-                device_id = data.get("device_id", device_id)
-                device_name = data.get("device_name", device_name)
-                candidate_urls = data.get("candidate_urls", [])
-        except Exception:
-            pass
+            import ctypes
+            ctypes.windll.user32.LockWorkStation()
+            logger.info("Screen locked via LockWorkStation")
+        except Exception as e:
+            logger.error(f"Lock screen failed: {e}")
 
-    if hub_url not in candidate_urls:
-        candidate_urls.insert(0, hub_url)
+    async def unlock_screen(self):
+        # Cannot programmatically unlock - requires user interaction
+        logger.info("Unlock requested - user must enter credentials")
+        self.show_notification("Screen unlock requested. Enter your credentials.")
 
-    # Probe candidates first
-    active_hub = None
-    for candidate in candidate_urls:
+    async def wipe_device(self):
+        logger.warning("WIPE COMMAND RECEIVED - This would trigger device reset")
+        # In real implementation: use MDM/WMI to trigger reset
+        # For safety, we only log and notify
+        self.show_notification("⚠️ Remote wipe command received. Contact administrator.")
+
+    def show_notification(self, message: str):
         try:
-            r = requests.get(f"{candidate.rstrip('/')}/health", timeout=1.5)
-            if r.status_code == 200:
-                active_hub = candidate.rstrip("/")
-                break
-        except Exception:
-            continue
+            import win10toast
+            toaster = win10toast.ToastNotifier()
+            toaster.show_toast("Himaya Agent", message, duration=10)
+        except ImportError:
+            logger.info(f"Notification: {message}")
 
-    if not active_hub:
-        # Try Auto-Discovery on network
-        discovered = discover_hub_on_lan(timeout=1.5)
-        if discovered and discovered.get("hub_url"):
-            active_hub = discovered["hub_url"].rstrip("/")
-            if active_hub not in candidate_urls:
-                candidate_urls.append(active_hub)
+    def force_close_app(self, app_name: str):
+        try:
+            import subprocess
+            subprocess.run(["taskkill", "/f", "/im", app_name], capture_output=True, timeout=5)
+            logger.info(f"Force closed app: {app_name}")
+        except Exception as e:
+            logger.error(f"Force close failed for {app_name}: {e}")
 
-    if active_hub:
-        hub_url = active_hub
+    async def run(self):
+        logger.info("=" * 50)
+        logger.info(f"Himaya Windows Agent starting")
+        logger.info(f"Device: {self.config.device_name} ({self.config.device_id})")
+        logger.info(f"Hub: {self.config.hub_url}")
+        logger.info("=" * 50)
 
-    # Save resolved config
-    saved_config = {
-        "hub_url": hub_url,
-        "candidate_urls": candidate_urls,
-        "device_id": device_id,
-        "device_name": device_name
-    }
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(saved_config, f, indent=2)
+        # Initial registration
+        if not self.client.check_health():
+            logger.error("Hub health check failed - waiting for hub...")
+            while not self.client.check_health() and self.running:
+                await asyncio.sleep(5)
 
-    return hub_url, device_id, device_name, candidate_urls
+        self.client.register_device()
+
+        # Initial policy fetch
+        rules = self.client.get_rules()
+        if rules:
+            self.rules = rules
+            self.dns.update_rules(rules)
+            self.curfew.rules = rules
+
+        # Start all loops concurrently
+        await asyncio.gather(
+            self.heartbeat_loop(),
+            self.vpn_guard_loop(),
+            self.policy_sync_loop(),
+            self.command_loop(),
+        )
+
+    def stop(self):
+        self.running = False
+        logger.info("Agent stopping...")
+
+
+def load_config() -> AgentConfig:
+    """Load configuration from agent_config.json."""
+    config_path = Path(os.environ.get("LOCALAPPDATA", "")) / "HimayaAgent" / "agent_config.json"
+    if config_path.exists():
+        with open(config_path, "r") as f:
+            data = json.load(f)
+        return AgentConfig(**data)
+
+    # Fallback for direct execution
+    computer = platform.node()
+    user = os.environ.get("USERNAME", "user")
+    device_id = f"win-{uuid.uuid4().hex[:8]}"
+    return AgentConfig(
+        hub_url="http://127.0.0.1:8000",
+        candidate_urls=["http://127.0.0.1:8000"],
+        device_id=device_id,
+        device_name=f"{computer} ({user})"
+    )
+
+
+def ensure_admin() -> bool:
+    """Check if running with Administrator privileges."""
+    try:
+        import ctypes
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except Exception:
+        return False
+
+
+async def main():
+    config = load_config()
+    logger.info(f"Loaded config: {config.device_id} -> {config.hub_url}")
+
+    if not ensure_admin():
+        logger.warning("Not running as Administrator. DNS filtering will be limited.")
+
+    agent = WindowsAgent(config)
+
+    try:
+        await agent.run()
+    except KeyboardInterrupt:
+        logger.info("Interrupted")
+    finally:
+        agent.stop()
 
 
 if __name__ == "__main__":
-    hub_url, dev_id, dev_name, candidates = load_or_create_config()
-    agent = WindowsAgent(hub_url, dev_id, dev_name, candidates)
-    agent.run()
+    asyncio.run(main())

@@ -484,6 +484,12 @@ def save_device_rules(device_id: str, rules: Dict[str, Any]) -> None:
     now = datetime.now(timezone.utc).isoformat()
     with get_connection() as conn:
         cursor = conn.cursor()
+        # Use boolean for PostgreSQL, integer for SQLite
+        bedtime_val = rules.get("bedtime_enabled")
+        if conn.is_pg:
+            bedtime_param = bedtime_val
+        else:
+            bedtime_param = 1 if bedtime_val else 0
         cursor.execute("""
             INSERT INTO rules (device_id, blocked_categories, blocked_domains, bedtime_enabled, bedtime_start, bedtime_end, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -498,7 +504,7 @@ def save_device_rules(device_id: str, rules: Dict[str, Any]) -> None:
             device_id,
             json.dumps(rules.get("blocked_categories", [])),
             json.dumps(rules.get("blocked_domains", [])),
-            1 if rules.get("bedtime_enabled") else 0,
+            bedtime_param,
             rules.get("bedtime_start", "21:00"),
             rules.get("bedtime_end", "07:00"),
             now

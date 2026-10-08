@@ -22,6 +22,17 @@ def is_postgres() -> bool:
     return bool(DATABASE_URL)
 
 
+def _safe_json_load(val: Any, default: Any = None) -> Any:
+    if val is None:
+        return default if default is not None else {}
+    if isinstance(val, (dict, list)):
+        return val
+    try:
+        return json.loads(val)
+    except Exception:
+        return default if default is not None else {}
+
+
 class DBConnection:
     """Unified context manager supporting both SQLite and PostgreSQL (Supabase)."""
     def __init__(self):
@@ -292,10 +303,7 @@ def list_events(limit: int = 50) -> List[Dict[str, Any]]:
         rows = cursor.fetchall()
         result = []
         for r in reversed(rows):
-            try:
-                parsed_data = json.loads(r["data"])
-            except Exception:
-                parsed_data = {}
+            parsed_data = _safe_json_load(r["data"], {})
             result.append({
                 "id": r["id"],
                 "device_id": r["device_id"],
@@ -338,10 +346,7 @@ def pop_pending_commands(device_id: str) -> List[Dict[str, Any]]:
 
         results = []
         for r in rows:
-            try:
-                p = json.loads(r["payload"])
-            except Exception:
-                p = {}
+            p = _safe_json_load(r["payload"], {})
             results.append({
                 "id": r["id"],
                 "action": r["action"],
@@ -369,8 +374,8 @@ def get_device_rules(device_id: str) -> Dict[str, Any]:
             }
         return {
             "device_id": row["device_id"],
-            "blocked_categories": json.loads(row["blocked_categories"]),
-            "blocked_domains": json.loads(row["blocked_domains"]),
+            "blocked_categories": _safe_json_load(row["blocked_categories"], ["adult", "gambling"]),
+            "blocked_domains": _safe_json_load(row["blocked_domains"], []),
             "bedtime_enabled": bool(row["bedtime_enabled"]),
             "bedtime_start": row["bedtime_start"],
             "bedtime_end": row["bedtime_end"]

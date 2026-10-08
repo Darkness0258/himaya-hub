@@ -18,8 +18,16 @@ DB_PATH = Path(__file__).parent / "himaya.db"
 DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
 
 
+_pg_available: Optional[bool] = None
+
+
 def is_postgres() -> bool:
-    return bool(DATABASE_URL)
+    global _pg_available
+    if not DATABASE_URL:
+        return False
+    if _pg_available is False:
+        return False
+    return True
 
 
 def _safe_json_load(val: Any, default: Any = None) -> Any:
@@ -36,14 +44,24 @@ def _safe_json_load(val: Any, default: Any = None) -> Any:
 class DBConnection:
     """Unified context manager supporting both SQLite and PostgreSQL (Supabase)."""
     def __init__(self):
+        global _pg_available
         self.is_pg = is_postgres()
         if self.is_pg:
-            import psycopg2
-            from psycopg2.extras import RealDictCursor
-            url = DATABASE_URL
-            if url.startswith("postgres://"):
-                url = url.replace("postgres://", "postgresql://", 1)
-            self.conn = psycopg2.connect(url, cursor_factory=RealDictCursor)
+            try:
+                import psycopg2
+                from psycopg2.extras import RealDictCursor
+                url = DATABASE_URL
+                if url.startswith("postgres://"):
+                    url = url.replace("postgres://", "postgresql://", 1)
+                self.conn = psycopg2.connect(url, cursor_factory=RealDictCursor, connect_timeout=5)
+                _pg_available = True
+            except Exception as e:
+                print(f"[Database Warning] Could not connect to PostgreSQL: {e}")
+                print("[Database Warning] Gracefully falling back to local SQLite database.")
+                _pg_available = False
+                self.is_pg = False
+                self.conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+                self.conn.row_factory = sqlite3.Row
         else:
             self.conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
             self.conn.row_factory = sqlite3.Row
@@ -87,9 +105,10 @@ def get_connection():
 
 def init_db() -> None:
     """Initialize database tables and indexes."""
-    with get_connection() as conn:
-        if is_postgres():
-            conn.executescript("""
+    try:
+        with get_connection() as conn:
+            if conn.is_pg:
+                conn.executescript("""
                 CREATE TABLE IF NOT EXISTS devices (
                     id SERIAL PRIMARY KEY,
                     device_id TEXT UNIQUE NOT NULL,
@@ -146,8 +165,8 @@ def init_db() -> None:
                 CREATE INDEX IF NOT EXISTS idx_events_ts ON events(timestamp DESC);
                 CREATE INDEX IF NOT EXISTS idx_cmds_dev ON commands(device_id, status);
             """)
-        else:
-            conn.executescript("""
+            else:
+                conn.executescript("""
                 CREATE TABLE IF NOT EXISTS devices (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     device_id TEXT UNIQUE NOT NULL,
@@ -204,7 +223,9 @@ def init_db() -> None:
                 CREATE INDEX IF NOT EXISTS idx_events_ts ON events(timestamp DESC);
                 CREATE INDEX IF NOT EXISTS idx_cmds_dev ON commands(device_id, status);
             """)
-        conn.commit()
+            conn.commit()
+    except Exception as e:
+        print(f"[Database Error] Table initialization encountered error: {e}")
 
 
 def clear_all_data() -> None:

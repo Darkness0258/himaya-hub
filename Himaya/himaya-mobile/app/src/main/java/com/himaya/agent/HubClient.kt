@@ -51,6 +51,21 @@ class HubClient {
         return res?.isSuccessful == true
     }
 
+    fun pairWithPin(
+        pin: String,
+        name: String,
+        platform: String = "android"
+    ): Boolean {
+        val json = JSONObject().apply {
+            put("pin", pin)
+            put("name", name)
+            put("platform", platform)
+            put("owner_type", "child")
+        }
+        val res = post("/enroll/pair", json.toString())
+        return res?.isSuccessful == true
+    }
+
     fun heartbeat(deviceId: String, ip: String): Boolean {
         val json = JSONObject().apply {
             put("ip", ip)

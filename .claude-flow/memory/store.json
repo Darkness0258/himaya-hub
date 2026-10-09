@@ -62,6 +62,15 @@
       "lastAccessed": "2026-10-06T19:13:40.463Z",
       "accessCount": 0,
       "expiresAt": "2026-11-05T19:13:40.463Z"
+    },
+    "cmd-1791460138193": {
+      "key": "cmd-1791460138193",
+      "value": "{\"command\":\"ls\",\"exitCode\":0,\"success\":true}",
+      "namespace": "commands",
+      "storedAt": "2026-10-08T11:48:58.193Z",
+      "lastAccessed": "2026-10-08T11:48:58.193Z",
+      "accessCount": 0,
+      "expiresAt": "2026-11-07T11:48:58.193Z"
     }
   },
   "version": "3.0.0"

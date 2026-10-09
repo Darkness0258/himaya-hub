@@ -72,6 +72,49 @@ class MainActivity : AppCompatActivity() {
         btnEnable.setOnClickListener { enableAgent() }
         btnDisable.setOnClickListener { disableAgent() }
         btnEnableVpn.setOnClickListener { prepareVpn() }
+
+        handleEnrollmentIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleEnrollmentIntent(intent)
+    }
+
+    /** Handle deep-link or QR code auto-enrollment from Hub */
+    private fun handleEnrollmentIntent(intent: Intent?) {
+        val uri = intent?.data ?: return
+        val hub = uri.getQueryParameter("hub")
+        val pin = uri.getQueryParameter("pin")
+        val devId = uri.getQueryParameter("device_id") ?: ("android-" + java.util.UUID.randomUUID().toString().take(6))
+
+        if (!hub.isNullOrBlank()) {
+            val cleanHub = if (!hub.startsWith("http://") && !hub.startsWith("https://")) "http://$hub" else hub
+            etHubUrl.setText(cleanHub)
+            etDeviceId.setText(devId)
+            PreferenceManager.putString(this, "hub_url", cleanHub)
+            PreferenceManager.putString(this, "device_id", devId)
+
+            Toast.makeText(this, "Auto-configured Hub: $cleanHub", Toast.LENGTH_LONG).show()
+
+            if (!pin.isNullOrBlank()) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    val client = HubClient().apply { hubUrl = cleanHub }
+                    val ok = client.pairWithPin(pin, android.os.Build.MODEL ?: "Android Device")
+                    withContext(Dispatchers.Main) {
+                        if (ok) {
+                            Toast.makeText(this@MainActivity, "✓ Paired with Himaya Hub!", Toast.LENGTH_LONG).show()
+                            if (devicePolicyManager.isAdminActive(adminComponent)) {
+                                enableAgent()
+                            } else {
+                                requestAdmin()
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     override fun onResume() {

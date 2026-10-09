@@ -7,77 +7,192 @@ Provides persistent storage for:
 - Content filtering rules & schedules
 - Snapshot metadata
 """
-from __future__ import annotations
 import json
+import os
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 DB_PATH = Path(__file__).parent / "himaya.db"
+DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
 
 
-def get_connection() -> sqlite3.Connection:
-    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
+def is_postgres() -> bool:
+    return bool(DATABASE_URL)
+
+
+class DBConnection:
+    """Unified context manager supporting both SQLite and PostgreSQL (Supabase)."""
+    def __init__(self):
+        self.is_pg = is_postgres()
+        if self.is_pg:
+            import psycopg2
+            from psycopg2.extras import RealDictCursor
+            url = DATABASE_URL
+            if url.startswith("postgres://"):
+                url = url.replace("postgres://", "postgresql://", 1)
+            self.conn = psycopg2.connect(url, cursor_factory=RealDictCursor)
+        else:
+            self.conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+            self.conn.row_factory = sqlite3.Row
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            self.conn.commit()
+        else:
+            self.conn.rollback()
+        self.conn.close()
+
+    def cursor(self):
+        return self.conn.cursor()
+
+    def execute(self, sql: str, params: tuple = ()):
+        cur = self.conn.cursor()
+        if self.is_pg:
+            # Adapt SQLite ? placeholders to PostgreSQL %s
+            sql = sql.replace("?", "%s")
+        cur.execute(sql, params)
+        return cur
+
+    def executescript(self, script: str):
+        if self.is_pg:
+            cur = self.conn.cursor()
+            cur.execute(script)
+        else:
+            self.conn.executescript(script)
+
+    def commit(self):
+        self.conn.commit()
+
+
+def get_connection():
+    return DBConnection()
+
 
 
 def init_db() -> None:
     """Initialize database tables and indexes."""
     with get_connection() as conn:
-        conn.executescript("""
-            CREATE TABLE IF NOT EXISTS devices (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                device_id TEXT UNIQUE NOT NULL,
-                name TEXT NOT NULL,
-                platform TEXT NOT NULL,
-                ip TEXT,
-                owner_type TEXT DEFAULT 'child',
-                status TEXT DEFAULT 'offline',
-                last_seen TEXT,
-                created_at TEXT NOT NULL
-            );
+        if is_postgres():
+            conn.executescript("""
+                CREATE TABLE IF NOT EXISTS devices (
+                    id SERIAL PRIMARY KEY,
+                    device_id TEXT UNIQUE NOT NULL,
+                    name TEXT NOT NULL,
+                    platform TEXT NOT NULL,
+                    ip TEXT,
+                    owner_type TEXT DEFAULT 'child',
+                    status TEXT DEFAULT 'offline',
+                    last_seen TEXT,
+                    created_at TEXT NOT NULL
+                );
 
-            CREATE TABLE IF NOT EXISTS events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                device_id TEXT NOT NULL,
-                type TEXT NOT NULL,
-                data TEXT NOT NULL,
-                timestamp TEXT NOT NULL
-            );
+                CREATE TABLE IF NOT EXISTS events (
+                    id SERIAL PRIMARY KEY,
+                    device_id TEXT NOT NULL,
+                    type TEXT NOT NULL,
+                    data TEXT NOT NULL,
+                    timestamp TEXT NOT NULL
+                );
 
-            CREATE TABLE IF NOT EXISTS commands (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                device_id TEXT NOT NULL,
-                action TEXT NOT NULL,
-                payload TEXT NOT NULL,
-                status TEXT DEFAULT 'pending',
-                created_at TEXT NOT NULL
-            );
+                CREATE TABLE IF NOT EXISTS commands (
+                    id SERIAL PRIMARY KEY,
+                    device_id TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    payload TEXT NOT NULL,
+                    status TEXT DEFAULT 'pending',
+                    created_at TEXT NOT NULL
+                );
 
-            CREATE TABLE IF NOT EXISTS rules (
-                device_id TEXT PRIMARY KEY,
-                blocked_categories TEXT DEFAULT '["adult", "gambling"]',
-                blocked_domains TEXT DEFAULT '[]',
-                bedtime_enabled INTEGER DEFAULT 0,
-                bedtime_start TEXT DEFAULT '21:00',
-                bedtime_end TEXT DEFAULT '07:00',
-                updated_at TEXT NOT NULL
-            );
+                CREATE TABLE IF NOT EXISTS rules (
+                    device_id TEXT PRIMARY KEY,
+                    blocked_categories TEXT DEFAULT '["adult", "gambling"]',
+                    blocked_domains TEXT DEFAULT '[]',
+                    bedtime_enabled INTEGER DEFAULT 0,
+                    bedtime_start TEXT DEFAULT '21:00',
+                    bedtime_end TEXT DEFAULT '07:00',
+                    updated_at TEXT NOT NULL
+                );
 
-            CREATE TABLE IF NOT EXISTS snapshots (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                device_id TEXT NOT NULL,
-                filename TEXT NOT NULL,
-                file_path TEXT NOT NULL,
-                timestamp TEXT NOT NULL
-            );
+                CREATE TABLE IF NOT EXISTS snapshots (
+                    id SERIAL PRIMARY KEY,
+                    device_id TEXT NOT NULL,
+                    filename TEXT NOT NULL,
+                    file_path TEXT NOT NULL,
+                    timestamp TEXT NOT NULL
+                );
 
-            CREATE INDEX IF NOT EXISTS idx_events_dev ON events(device_id);
-            CREATE INDEX IF NOT EXISTS idx_events_ts ON events(timestamp DESC);
-            CREATE INDEX IF NOT EXISTS idx_cmds_dev ON commands(device_id, status);
-        """)
+                CREATE TABLE IF NOT EXISTS settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_events_dev ON events(device_id);
+                CREATE INDEX IF NOT EXISTS idx_events_ts ON events(timestamp DESC);
+                CREATE INDEX IF NOT EXISTS idx_cmds_dev ON commands(device_id, status);
+            """)
+        else:
+            conn.executescript("""
+                CREATE TABLE IF NOT EXISTS devices (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    device_id TEXT UNIQUE NOT NULL,
+                    name TEXT NOT NULL,
+                    platform TEXT NOT NULL,
+                    ip TEXT,
+                    owner_type TEXT DEFAULT 'child',
+                    status TEXT DEFAULT 'offline',
+                    last_seen TEXT,
+                    created_at TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    device_id TEXT NOT NULL,
+                    type TEXT NOT NULL,
+                    data TEXT NOT NULL,
+                    timestamp TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS commands (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    device_id TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    payload TEXT NOT NULL,
+                    status TEXT DEFAULT 'pending',
+                    created_at TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS rules (
+                    device_id TEXT PRIMARY KEY,
+                    blocked_categories TEXT DEFAULT '["adult", "gambling"]',
+                    blocked_domains TEXT DEFAULT '[]',
+                    bedtime_enabled INTEGER DEFAULT 0,
+                    bedtime_start TEXT DEFAULT '21:00',
+                    bedtime_end TEXT DEFAULT '07:00',
+                    updated_at TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS snapshots (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    device_id TEXT NOT NULL,
+                    filename TEXT NOT NULL,
+                    file_path TEXT NOT NULL,
+                    timestamp TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_events_dev ON events(device_id);
+                CREATE INDEX IF NOT EXISTS idx_events_ts ON events(timestamp DESC);
+                CREATE INDEX IF NOT EXISTS idx_cmds_dev ON commands(device_id, status);
+            """)
         conn.commit()
 
 
@@ -325,3 +440,24 @@ def list_snapshots(device_id: Optional[str] = None, limit: int = 20) -> List[Dic
                 LIMIT ?
             """, (limit,))
         return [dict(r) for r in cursor.fetchall()]
+# --- System & Network Settings Operations ---
+def get_setting(key: str, default: Optional[str] = None) -> Optional[str]:
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM settings WHERE key = ?", (key,))
+        row = cursor.fetchone()
+        if row:
+            return row["value"]
+        return default
+
+
+def set_setting(key: str, value: str) -> None:
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO settings (key, value)
+            VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+        """, (key, value))
+        conn.commit()
+

@@ -1,32 +1,38 @@
-"""Himaya Hub — Real-World Production Backend with SQLite, DNS Engine, Lifespan & Snapshots."""
+"""Himaya Hub — Real-World Production Backend with SQLite, DNS Engine, Lifespan, Snapshots & Auto-Enrollment."""
 from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+import io
+import os
 from pathlib import Path
 import shutil
 import uuid
 from typing import Dict, List, Optional
 
-from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+import qrcode
 
 import database
+from discovery import DiscoveryServer, get_lan_ip, get_public_ip, get_enrollment_pin, regenerate_enrollment_pin
 from dns_server import DnsFilterServer
 from models import Device, DeviceCreate, DeviceStatus, Event, EventType, RemoteAction
 
 DATA_DIR = Path(__file__).parent / "data"
 SNAPSHOTS_DIR = DATA_DIR / "snapshots"
 STATIC_DIR = Path(__file__).parent / "static"
+WINDOWS_AGENT_PATH = Path(__file__).parent.parent / "agent-windows" / "himaya_windows_agent.py"
 
 SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
 
 clients: list[WebSocket] = []
 main_loop: Optional[asyncio.AbstractEventLoop] = None
 dns_server: Optional[DnsFilterServer] = None
+discovery_server: Optional[DiscoveryServer] = None
 watchdog_task: Optional[asyncio.Task] = None
 
 
@@ -64,7 +70,6 @@ async def heartbeat_watchdog():
 def handle_dns_block_telemetry(client_ip: str, domain: str):
     """Callback from DNS engine when a blacklisted domain query is sinkholed."""
     now = datetime.now(timezone.utc)
-    # Find matching device by IP or attribute to first registered device / unassigned
     matched_dev_id = "network-client"
     devices = database.list_devices()
     for d in devices:
@@ -85,7 +90,7 @@ def handle_dns_block_telemetry(client_ip: str, domain: str):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global main_loop, dns_server, watchdog_task
+    global main_loop, dns_server, discovery_server, watchdog_task
     # Startup
     main_loop = asyncio.get_running_loop()
     database.init_db()
@@ -93,6 +98,10 @@ async def lifespan(app: FastAPI):
     # Start DNS sinkhole proxy on port 5353
     dns_server = DnsFilterServer(port=5353, on_block_callback=handle_dns_block_telemetry)
     dns_server.start()
+
+    # Start UDP LAN Auto-Discovery on port 5354
+    discovery_server = DiscoveryServer(http_port=8000)
+    discovery_server.start()
 
     # Start Watchdog
     watchdog_task = asyncio.create_task(heartbeat_watchdog())
@@ -104,6 +113,8 @@ async def lifespan(app: FastAPI):
         watchdog_task.cancel()
     if dns_server:
         dns_server.stop()
+    if discovery_server:
+        discovery_server.stop()
 
 
 app = FastAPI(title="Himaya Hub", version="1.0.0", lifespan=lifespan)
@@ -136,7 +147,6 @@ def emit(event: Event) -> None:
     """Broadcast event to all connected dashboard clients and persist in DB."""
     payload = event.model_dump(mode="json")
 
-    # Persist in DB
     event_id = database.insert_event(
         device_id=event.device_id,
         event_type=event.type.value,
@@ -174,6 +184,391 @@ async def serve_dashboard():
     if index_file.exists():
         return FileResponse(index_file)
     return {"status": "ok", "message": "Himaya Hub active"}
+
+
+# --- AUTO-ENROLLMENT & ZERO-TOUCH ONBOARDING (INTERNET & LAN) ---
+class SetPublicUrlRequest(BaseModel):
+    public_url: str
+
+
+@app.post("/enroll/public-url")
+async def set_public_hub_url(body: SetPublicUrlRequest):
+    """Save a custom Internet Hub URL (e.g. Public IP, DuckDNS, or Cloudflare Tunnel)."""
+    cleaned = body.public_url.strip().rstrip("/")
+    if cleaned and not (cleaned.startswith("http://") or cleaned.startswith("https://")):
+        cleaned = f"http://{cleaned}"
+    database.set_setting("public_hub_url", cleaned)
+    return {"status": "ok", "public_url": cleaned}
+
+
+@app.get("/enroll/info")
+async def get_enrollment_info(request: Request, target: Optional[str] = None):
+    """Returns dynamic network addresses and enrollment credentials for real devices across Internet & LAN."""
+    lan_ip = get_lan_ip()
+    public_ip = get_public_ip()
+    saved_public_url = database.get_setting("public_hub_url") or os.environ.get("HIMAYA_PUBLIC_URL")
+
+    lan_hub_url = f"http://{lan_ip}:8000"
+    internet_hub_url = saved_public_url.rstrip("/") if saved_public_url else f"http://{public_ip}:8000"
+
+    host_header = request.headers.get("host", "")
+    active_hub_url = f"http://{host_header}" if host_header else lan_hub_url
+
+    pin = get_enrollment_pin()
+
+    return {
+        "status": "ready",
+        "lan_ip": lan_ip,
+        "public_ip": public_ip,
+        "pin": pin,
+        "is_custom_internet_url": bool(saved_public_url),
+        "lan": {
+            "hub_url": lan_hub_url,
+            "windows_cmd": f"irm {lan_hub_url}/enroll/win?target=lan | iex",
+            "mobile_url": f"{lan_hub_url}/enroll/mobile?target=lan",
+            "qr_url": f"/enroll/qr?target=lan",
+        },
+        "internet": {
+            "hub_url": internet_hub_url,
+            "windows_cmd": f"irm {internet_hub_url}/enroll/win?target=internet | iex",
+            "mobile_url": f"{internet_hub_url}/enroll/mobile?target=internet",
+            "qr_url": f"/enroll/qr?target=internet",
+        },
+        "hub_url": active_hub_url,
+        "windows_cmd": f"irm {active_hub_url}/enroll/win | iex",
+        "mobile_url": f"{active_hub_url}/enroll/mobile",
+        "qr_url": f"/enroll/qr"
+    }
+
+
+@app.get("/enroll/qr")
+async def get_enrollment_qr(request: Request, target: Optional[str] = "auto", hub_url: Optional[str] = None):
+    """Generates a QR Code PNG for phone camera enrollment (supporting LAN and Internet)."""
+    if hub_url:
+        resolved_url = hub_url.rstrip("/")
+    elif target == "internet":
+        saved_public_url = database.get_setting("public_hub_url") or os.environ.get("HIMAYA_PUBLIC_URL")
+        public_ip = get_public_ip()
+        resolved_url = saved_public_url.rstrip("/") if saved_public_url else f"http://{public_ip}:8000"
+    elif target == "lan":
+        lan_ip = get_lan_ip()
+        resolved_url = f"http://{lan_ip}:8000"
+    else:
+        lan_ip = get_lan_ip()
+        host_header = request.headers.get("host", f"{lan_ip}:8000")
+        resolved_url = f"http://{host_header}"
+
+    target_url = f"{resolved_url}/enroll/mobile"
+    img = qrcode.make(target_url)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return Response(content=buf.getvalue(), media_type="image/png")
+
+
+@app.get("/enroll/win")
+async def get_windows_installer_script(request: Request, target: Optional[str] = "auto", hub_url: Optional[str] = None):
+    """Serves the 1-click PowerShell installer script for any Windows PC over Internet or LAN."""
+    lan_ip = get_lan_ip()
+    public_ip = get_public_ip()
+    saved_public_url = database.get_setting("public_hub_url") or os.environ.get("HIMAYA_PUBLIC_URL")
+    lan_hub_url = f"http://{lan_ip}:8000"
+    internet_hub_url = saved_public_url.rstrip("/") if saved_public_url else f"http://{public_ip}:8000"
+
+    if hub_url:
+        primary_hub = hub_url.rstrip("/")
+    elif target == "internet":
+        primary_hub = internet_hub_url
+    elif target == "lan":
+        primary_hub = lan_hub_url
+    else:
+        host_header = request.headers.get("host", f"{lan_ip}:8000")
+        primary_hub = f"http://{host_header}"
+
+    script = f'''# Himaya Automatic Windows Agent Installer (Internet & LAN Multi-Homed)
+$ErrorActionPreference = "Stop"
+Write-Host "========================================================" -ForegroundColor Cyan
+Write-Host "   HIMAYA FAMILY SAFETY - REAL DEVICE AUTO-ENROLLMENT" -ForegroundColor Cyan
+Write-Host "========================================================" -ForegroundColor Cyan
+
+$primaryUrl   = "{primary_hub}"
+$lanUrl       = "{lan_hub_url}"
+$internetUrl  = "{internet_hub_url}"
+$candidateUrls = @($primaryUrl, $internetUrl, $lanUrl, "http://127.0.0.1:8000") | Select-Object -Unique
+
+$computerName = $env:COMPUTERNAME
+$userName = $env:USERNAME
+$rawId = [guid]::NewGuid().ToString().Substring(0, 8)
+$deviceId = "win-$rawId"
+$deviceName = "$computerName ($userName)"
+
+Write-Host "Probing Hub connectivity across network endpoints..." -ForegroundColor Yellow
+$hubUrl = $primaryUrl
+$connected = $false
+
+foreach ($candidate in $candidateUrls) {{
+    try {{
+        Write-Host "  Testing candidate: $candidate/health ..." -NoNewline
+        $resp = Invoke-RestMethod -Uri "$candidate/health" -Method Get -TimeoutSec 4
+        if ($resp.status -eq "ok") {{
+            $hubUrl = $candidate
+            $connected = $true
+            Write-Host " [OK - CONNECTED]" -ForegroundColor Green
+            break
+        }} else {{
+            Write-Host " [Non-ok response]" -ForegroundColor DarkYellow
+        }}
+    }} catch {{
+        Write-Host " [Unreachable]" -ForegroundColor DarkGray
+    }}
+}}
+
+if (-not $connected) {{
+    Write-Host "Notice: Direct health probe timed out; configuring with active endpoints ($primaryUrl)." -ForegroundColor DarkYellow
+}} else {{
+    Write-Host "Active connection established with Himaya Hub at $hubUrl" -ForegroundColor Green
+}}
+
+$agentDir = "$env:LOCALAPPDATA\\HimayaAgent"
+if (-not (Test-Path $agentDir)) {{
+    New-Item -ItemType Directory -Path $agentDir -Force | Out-Null
+}}
+
+$config = @{{
+    hub_url = $hubUrl
+    candidate_urls = $candidateUrls
+    device_id = $deviceId
+    device_name = $deviceName
+}} | ConvertTo-Json
+
+Set-Content -Path "$agentDir\\agent_config.json" -Value $config -Force
+
+Write-Host "Downloading Himaya Background Protection Engine..." -ForegroundColor Yellow
+$agentDownloaded = $false
+foreach ($dlCandidate in @($hubUrl, $primaryUrl, $lanUrl, $internetUrl) | Select-Object -Unique) {{
+    try {{
+        Invoke-WebRequest -Uri "$dlCandidate/enroll/win/agent.py" -OutFile "$agentDir\\himaya_windows_agent.py" -TimeoutSec 10
+        $agentDownloaded = $true
+        Write-Host "Protection engine successfully fetched from $dlCandidate" -ForegroundColor Green
+        break
+    }} catch {{}}
+}}
+
+if (-not $agentDownloaded) {{
+    Write-Host "Error: Could not retrieve himaya_windows_agent.py from any candidate URL." -ForegroundColor Red
+    exit 1
+}}
+
+# Register device with Hub
+$regPayload = @{{
+    name = $deviceName
+    platform = "windows"
+    device_id = $deviceId
+    owner_type = "child"
+}} | ConvertTo-Json
+
+foreach ($regCandidate in @($hubUrl, $primaryUrl, $lanUrl, $internetUrl) | Select-Object -Unique) {{
+    try {{
+        Invoke-RestMethod -Uri "$regCandidate/devices" -Method Post -Body $regPayload -ContentType "application/json" -TimeoutSec 5 | Out-Null
+        Write-Host "Device registered in Hub registry at $regCandidate." -ForegroundColor Green
+        break
+    }} catch {{}}
+}}
+
+# Ensure Pillow & Requests are installed
+try {{
+    python -m pip install --quiet requests pillow
+}} catch {{}}
+
+# Create Windows Startup Launcher (.vbs so it starts silently in background on logon)
+$vbsScript = @"
+Set WshShell = CreateObject("WScript.Shell")
+WshShell.Run "pythonw.exe ""$agentDir\\himaya_windows_agent.py""", 0, False
+"@
+$startupDir = [Environment]::GetFolderPath("Startup")
+Set-Content -Path "$startupDir\\HimayaAgent.vbs" -Value $vbsScript -Force
+
+# Start Agent Process immediately
+Start-Process -WindowStyle Hidden -FilePath "pythonw.exe" -ArgumentList """$agentDir\\himaya_windows_agent.py"""
+
+Write-Host "========================================================" -ForegroundColor Green
+Write-Host "  SUCCESS: REAL DEVICE AUTO-ENROLLED!" -ForegroundColor Green
+Write-Host "  Name:       $deviceName" -ForegroundColor Green
+Write-Host "  ID:         $deviceId" -ForegroundColor Green
+Write-Host "  Hub:        $hubUrl" -ForegroundColor Green
+Write-Host "  Failover:   Multi-homed (Internet + LAN automatic switching)" -ForegroundColor Green
+Write-Host "  Status:     Active background protection enabled." -ForegroundColor Green
+Write-Host "  Auto-Start: Enabled via Windows Startup folder." -ForegroundColor Green
+Write-Host "========================================================" -ForegroundColor Green
+'''
+    return Response(content=script, media_type="text/plain; charset=utf-8")
+
+
+@app.get("/enroll/win/agent.py")
+async def get_windows_agent_file():
+    if not WINDOWS_AGENT_PATH.exists():
+        raise HTTPException(status_code=404, detail="Agent script not found")
+    return FileResponse(WINDOWS_AGENT_PATH, media_type="text/x-python")
+
+
+@app.get("/enroll/mobile", response_class=HTMLResponse)
+async def get_mobile_enrollment_page(request: Request, target: Optional[str] = "auto", hub_url: Optional[str] = None):
+    """Mobile onboarding page rendered when scanning the QR code from phone/tablet."""
+    lan_ip = get_lan_ip()
+    public_ip = get_public_ip()
+    saved_public_url = database.get_setting("public_hub_url") or os.environ.get("HIMAYA_PUBLIC_URL")
+    lan_hub_url = f"http://{lan_ip}:8000"
+    internet_hub_url = saved_public_url.rstrip("/") if saved_public_url else f"http://{public_ip}:8000"
+
+    if hub_url:
+        active_url = hub_url.rstrip("/")
+    elif target == "internet":
+        active_url = internet_hub_url
+    elif target == "lan":
+        active_url = lan_hub_url
+    else:
+        host_header = request.headers.get("host", f"{lan_ip}:8000")
+        active_url = f"http://{host_header}"
+
+    pin = get_enrollment_pin()
+
+    html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Himaya Device Protection Enrollment</title>
+    <style>
+        body {{
+            background: #0b0f19;
+            color: #f8fafc;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 24px;
+            text-align: center;
+            margin: 0;
+        }}
+        .card {{
+            background: #1e293b;
+            border-radius: 20px;
+            padding: 28px 22px;
+            max-width: 440px;
+            margin: 20px auto;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        }}
+        .badge {{
+            display: inline-block;
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }}
+        .pin {{
+            font-size: 2.8rem;
+            font-weight: 800;
+            letter-spacing: 8px;
+            color: #10b981;
+            margin: 16px 0;
+            font-family: monospace;
+            background: #0f172a;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }}
+        .btn {{
+            display: block;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            text-decoration: none;
+            padding: 16px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 1.05rem;
+            margin-top: 24px;
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+        }}
+        .step {{
+            text-align: left;
+            margin: 14px 0;
+            font-size: 0.95rem;
+            color: #cbd5e1;
+            line-height: 1.4;
+        }}
+        .hub-tag {{
+            background: #0f172a;
+            padding: 6px 10px;
+            border-radius: 6px;
+            color: #38bdf8;
+            font-family: monospace;
+            font-size: 0.85rem;
+            word-break: break-all;
+            display: inline-block;
+            margin-top: 4px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <span class="badge">🌐 Internet & LAN Auto-Enroll</span>
+        <h2 style="margin: 6px 0 10px 0;">🛡️ Himaya Family Safety</h2>
+        <p style="color: #94a3b8; font-size: 0.9rem; margin-top: 0;">Connect this device to your Family Safety Hub</p>
+        
+        <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-top: 20px; font-weight: 600;">6-Digit Pairing PIN</div>
+        <div class="pin">{pin}</div>
+
+        <div class="step"><b>1.</b> Tap the button below to launch Himaya Agent on this phone.</div>
+        <div class="step"><b>2.</b> Hub Address will be pre-filled to:<br><span class="hub-tag">{active_url}</span></div>
+        <div class="step"><b>3.</b> Confirm the 6-digit PIN to establish protected Device Owner status.</div>
+
+        <a href="intent://enroll?hub={active_url}&pin={pin}#Intent;scheme=himaya;package=com.himaya.agent;end" class="btn">
+            ⚡ Open Himaya App & Auto-Pair
+        </a>
+    </div>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
+
+
+class PairRequest(BaseModel):
+    pin: str
+    name: str
+    platform: str
+    owner_type: str = "child"
+    ip: Optional[str] = None
+
+
+@app.post("/enroll/pair")
+async def pair_device(body: PairRequest):
+    """Enrolls a real device using the 6-digit Quick PIN."""
+    expected_pin = get_enrollment_pin()
+    if body.pin != expected_pin:
+        raise HTTPException(status_code=400, detail="Invalid enrollment PIN")
+
+    device_id = f"{body.platform}-{uuid.uuid4().hex[:6]}"
+    dev = database.insert_device(
+        device_id=device_id,
+        name=body.name,
+        platform=body.platform,
+        owner_type=body.owner_type,
+        ip=body.ip
+    )
+    emit(Event(
+
+        device_id=device_id,
+        type=EventType.POLICY_SYNC,
+        data={"action": "device_paired", "device": dev},
+        timestamp=datetime.now(timezone.utc)
+    ))
+    return {
+        "status": "paired",
+        "device_id": device_id,
+        "device": dev
+    }
 
 
 # --- Device Registry ---
@@ -217,7 +612,6 @@ async def ws_feed(ws: WebSocket):
     await ws.accept()
     clients.append(ws)
     try:
-        # Send current snapshot on connect
         devices_list = database.list_devices()
         recent_events = database.list_events(limit=25)
         await ws.send_json({
@@ -267,7 +661,6 @@ async def heartbeat(device_id: str, ip: str = ""):
 
 @app.get("/agents/{device_id}/commands")
 async def get_pending_commands(device_id: str):
-    """Agent calls this continuously to consume pending remote parent commands."""
     cmds = database.pop_pending_commands(device_id)
     return {"device_id": device_id, "commands": cmds}
 
@@ -311,7 +704,6 @@ async def policy_sync(device_id: str, rules: dict = {}):
 # --- Snapshot Storage & Inspection ---
 @app.post("/agents/{device_id}/snapshot")
 async def upload_snapshot(device_id: str, file: UploadFile = File(...)):
-    """Agent uploads captured screen frame via MediaProjection or Windows capture."""
     dev_dir = SNAPSHOTS_DIR / device_id
     dev_dir.mkdir(parents=True, exist_ok=True)
 
@@ -357,7 +749,6 @@ async def fetch_rules(device_id: str):
 @app.post("/rules/{device_id}")
 async def update_rules(device_id: str, rules: dict):
     database.save_device_rules(device_id, rules)
-    # Queue policy sync command to agent
     database.queue_command(device_id, "policy_sync", rules)
     emit(Event(
         device_id=device_id,
@@ -417,6 +808,8 @@ async def health():
         "status": "ok",
         "devices": len(devs),
         "events": len(evts),
+        "lan_ip": get_lan_ip(),
+        "public_ip": get_public_ip(),
         "ts": current_time_iso()
     }
 

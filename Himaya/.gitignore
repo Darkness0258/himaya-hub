@@ -1,0 +1,39 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Local databases & testing data
+hub/himaya.db
+hub/himaya.db-journal
+hub/data/snapshots/*
+!hub/data/snapshots/.gitkeep
+
+# Logs & temp files
+*.log
+*.tmp
+
+# Local testing artifacts
+.playwright-mcp/
+agent_config.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Claude Flow state (internal agent tool)
+.claude-flow/
+hub/.claude-flow/
+
+# Screenshots from testing (not assets)
+dashboard_*.png
+enrollment_*.png
+policies_*.png
+screen_*.png

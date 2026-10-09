@@ -5,6 +5,7 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.media.projection.MediaProjectionManager
 import android.net.VpnService
 import android.os.Bundle
 import android.util.Log
@@ -203,6 +204,9 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     Toast.makeText(this, "VPN required for DNS filtering", Toast.LENGTH_LONG).show()
                 }
+            }
+            ScreenShareService.MEDIA_PROJECTION_REQUEST_CODE -> {
+                ScreenShareService.onMediaProjectionResult(this, requestCode, resultCode, data ?: Intent())
             }
         }
     }

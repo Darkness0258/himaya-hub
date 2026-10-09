@@ -1,3 +1,32 @@
+/* Himaya Dashboard — Global Styles */
+
+:root {
+  --bg: #0a0e14;
+  --surface: #0f151f;
+  --border: #1e2a3a;
+  --text: #e2e8f0;
+  --text-muted: #64748b;
+  --text-dim: #475569;
+  --accent: #6366f1;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+
+body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+
+button { font-family: inherit; cursor: pointer; border: none; outline: none; }
+textarea { font-family: inherit; }
+
+/* ── Utility ── */
+.btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 0.85rem; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); font-size: 0.8rem; transition: all 0.15s ease; }
+.btn:hover { background: var(--border); color: var(--text); }
+
 :root {
   --text: #6b6375;
   --text-h: #08060d;

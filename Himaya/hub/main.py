@@ -4,6 +4,8 @@ import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 import io
+import json
+import logging
 import os
 from pathlib import Path
 import shutil
@@ -25,7 +27,19 @@ from models import Device, DeviceCreate, DeviceStatus, Event, EventType, RemoteA
 DATA_DIR = Path(__file__).parent / "data"
 SNAPSHOTS_DIR = DATA_DIR / "snapshots"
 STATIC_DIR = Path(__file__).parent / "static"
-WINDOWS_AGENT_PATH = Path(__file__).parent.parent / "agent-windows" / "himaya_windows_agent.py"
+def get_windows_agent_path() -> Path:
+    candidates = [
+        Path(__file__).parent / "himaya_windows_agent.py",
+        Path(__file__).parent / "agent-windows" / "himaya_windows_agent.py",
+        Path(__file__).parent.parent / "agent-windows" / "himaya_windows_agent.py",
+    ]
+    for c in candidates:
+        if c.exists():
+            return c
+    return candidates[0]
+
+WINDOWS_AGENT_PATH = get_windows_agent_path()
+
 
 SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -34,6 +48,9 @@ main_loop: Optional[asyncio.AbstractEventLoop] = None
 dns_server: Optional[DnsFilterServer] = None
 discovery_server: Optional[DiscoveryServer] = None
 watchdog_task: Optional[asyncio.Task] = None
+keepalive_task: Optional[asyncio.Task] = None
+
+logger = logging.getLogger("himaya")
 
 
 def current_time_iso() -> str:
@@ -64,22 +81,75 @@ async def heartbeat_watchdog():
         except asyncio.CancelledError:
             break
         except Exception as e:
+            logger.warning(f"Watchdog error: {e}")
             await asyncio.sleep(5)
 
 
+async def keep_alive_ping():
+    """Self-ping /health every 9 minutes to prevent Render free-tier sleep.
+    
+    Render spins down free-tier services after ~15 min of inactivity.
+    This background task ensures the service stays warm by pinging its public URL.
+    """
+    await asyncio.sleep(60)  # Initial grace period on boot
+
+    while True:
+        try:
+            # Determine our own external URL
+            own_url = (
+                os.environ.get("RENDER_EXTERNAL_URL")
+                or os.environ.get("HIMAYA_PUBLIC_URL")
+                or database.get_setting("public_hub_url")
+            )
+            # If deployed on Render and no explicit public URL provided, default to Render URL
+            if not own_url and (os.environ.get("RENDER") or os.environ.get("PORT")):
+                own_url = "https://himaya-hub.onrender.com"
+
+            if own_url:
+                health_url = f"{own_url.rstrip('/')}/health"
+
+                def _do_ping() -> str:
+                    import urllib.request
+                    req = urllib.request.Request(
+                        health_url,
+                        headers={"User-Agent": "Himaya-KeepAlive-Watchdog/1.0"}
+                    )
+                    with urllib.request.urlopen(req, timeout=15) as resp:
+                        return f"HTTP {resp.status}"
+
+                res_msg = await asyncio.to_thread(_do_ping)
+                logger.info(f"[Keep-Alive] Ping {health_url} -> {res_msg}")
+            else:
+                logger.debug("[Keep-Alive] Running locally without external URL; self-ping skipped.")
+
+            # Sleep 9 minutes (540s) — well before Render's 15-minute idle limit
+            await asyncio.sleep(540)
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.warning(f"[Keep-Alive] Ping cycle note: {e}")
+            await asyncio.sleep(60)
+
+
 def handle_dns_block_telemetry(client_ip: str, domain: str):
-    """Callback from DNS engine when a blacklisted domain query is sinkholed."""
+    """Callback from DNS engine when a blacklisted domain query is sinkholed.
+    
+    NOTE: emit() already inserts the event into the database, so we only call
+    emit() here — no separate database.insert_event() to avoid duplicate rows.
+    """
     now = datetime.now(timezone.utc)
     matched_dev_id = "network-client"
-    devices = database.list_devices()
-    for d in devices:
-        if d.get("ip") == client_ip:
-            matched_dev_id = d["device_id"]
-            break
-    if matched_dev_id == "network-client" and devices:
-        matched_dev_id = devices[0]["device_id"]
+    try:
+        devices = database.list_devices()
+        for d in devices:
+            if d.get("ip") == client_ip:
+                matched_dev_id = d["device_id"]
+                break
+        if matched_dev_id == "network-client" and devices:
+            matched_dev_id = devices[0]["device_id"]
+    except Exception:
+        pass
 
-    database.insert_event(matched_dev_id, EventType.DNS_BLOCK.value, {"host": domain, "client_ip": client_ip}, now.isoformat())
     emit(Event(
         device_id=matched_dev_id,
         type=EventType.DNS_BLOCK,
@@ -90,25 +160,36 @@ def handle_dns_block_telemetry(client_ip: str, domain: str):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global main_loop, dns_server, discovery_server, watchdog_task
+    global main_loop, dns_server, discovery_server, watchdog_task, keepalive_task
     # Startup
     main_loop = asyncio.get_running_loop()
     database.init_db()
 
     # Start DNS sinkhole proxy on port 5353
-    dns_server = DnsFilterServer(port=5353, on_block_callback=handle_dns_block_telemetry)
-    dns_server.start()
+    try:
+        dns_server = DnsFilterServer(port=5353, on_block_callback=handle_dns_block_telemetry)
+        dns_server.start()
+    except Exception as e:
+        logger.warning(f"DNS server failed to start: {e}")
 
     # Start UDP LAN Auto-Discovery on port 5354
-    discovery_server = DiscoveryServer(http_port=8000)
-    discovery_server.start()
+    try:
+        discovery_server = DiscoveryServer(http_port=8000)
+        discovery_server.start()
+    except Exception as e:
+        logger.warning(f"Discovery server failed to start: {e}")
 
     # Start Watchdog
     watchdog_task = asyncio.create_task(heartbeat_watchdog())
 
+    # Start Keep-Alive self-ping (prevents Render free-tier sleep)
+    keepalive_task = asyncio.create_task(keep_alive_ping())
+
     yield
 
     # Shutdown
+    if keepalive_task:
+        keepalive_task.cancel()
     if watchdog_task:
         watchdog_task.cancel()
     if dns_server:
@@ -201,6 +282,17 @@ async def set_public_hub_url(body: SetPublicUrlRequest):
     return {"status": "ok", "public_url": cleaned}
 
 
+def resolve_request_base_url(request: Request) -> str:
+    host_header = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
+    proto = request.headers.get("x-forwarded-proto", "")
+    if not proto:
+        proto = "https" if ("onrender.com" in host_header or "vercel.app" in host_header) else "http"
+    if host_header:
+        return f"{proto}://{host_header}".rstrip("/")
+    lan = get_lan_ip()
+    return f"http://{lan}:8000"
+
+
 @app.get("/enroll/info")
 async def get_enrollment_info(request: Request, target: Optional[str] = None):
     """Returns dynamic network addresses and enrollment credentials for real devices across Internet & LAN."""
@@ -208,12 +300,22 @@ async def get_enrollment_info(request: Request, target: Optional[str] = None):
     public_ip = get_public_ip()
     saved_public_url = database.get_setting("public_hub_url") or os.environ.get("HIMAYA_PUBLIC_URL")
 
-    lan_hub_url = f"http://{lan_ip}:8000"
-    internet_hub_url = saved_public_url.rstrip("/") if saved_public_url else f"http://{public_ip}:8000"
+    request_base_url = resolve_request_base_url(request)
+    is_public_domain = "onrender.com" in request_base_url or request_base_url.startswith("https://") or bool(os.environ.get("RENDER")) or not any(
+        request_base_url.startswith(p) for p in ["http://localhost", "http://127.0.0.1", "http://192.168.", "http://10.", "http://172."]
+    )
 
-    host_header = request.headers.get("host", "")
-    active_hub_url = f"http://{host_header}" if host_header else lan_hub_url
+    if saved_public_url:
+        internet_hub_url = saved_public_url.rstrip("/")
+    elif is_public_domain:
+        internet_hub_url = request_base_url
+    else:
+        internet_hub_url = f"http://{public_ip}:8000"
 
+    # In cloud environments (Render / HTTPS), there is no private Home LAN for the server:
+    # All devices connect securely via the public domain.
+    lan_hub_url = internet_hub_url if is_public_domain else f"http://{lan_ip}:8000"
+    active_hub_url = internet_hub_url if is_public_domain else lan_hub_url
     pin = get_enrollment_pin()
 
     return {
@@ -221,42 +323,55 @@ async def get_enrollment_info(request: Request, target: Optional[str] = None):
         "lan_ip": lan_ip,
         "public_ip": public_ip,
         "pin": pin,
+        "is_cloud": is_public_domain,
         "is_custom_internet_url": bool(saved_public_url),
         "lan": {
             "hub_url": lan_hub_url,
-            "windows_cmd": f"irm {lan_hub_url}/enroll/win?target=lan | iex",
-            "mobile_url": f"{lan_hub_url}/enroll/mobile?target=lan",
-            "qr_url": f"/enroll/qr?target=lan",
+            "windows_cmd": f"irm {lan_hub_url}/enroll/win?target={'internet' if is_public_domain else 'lan'} | iex",
+            "mobile_url": f"{lan_hub_url}/enroll/mobile?target={'internet' if is_public_domain else 'lan'}",
+            "qr_url": f"/enroll/qr?target={'internet' if is_public_domain else 'lan'}&hub_url={lan_hub_url}",
         },
         "internet": {
             "hub_url": internet_hub_url,
             "windows_cmd": f"irm {internet_hub_url}/enroll/win?target=internet | iex",
             "mobile_url": f"{internet_hub_url}/enroll/mobile?target=internet",
-            "qr_url": f"/enroll/qr?target=internet",
+            "qr_url": f"/enroll/qr?target=internet&hub_url={internet_hub_url}",
         },
         "hub_url": active_hub_url,
         "windows_cmd": f"irm {active_hub_url}/enroll/win | iex",
         "mobile_url": f"{active_hub_url}/enroll/mobile",
-        "qr_url": f"/enroll/qr"
+        "qr_url": f"/enroll/qr?hub_url={active_hub_url}"
     }
 
 
 @app.get("/enroll/qr")
 async def get_enrollment_qr(request: Request, target: Optional[str] = "auto", hub_url: Optional[str] = None):
     """Generates a QR Code PNG for phone camera enrollment (supporting LAN and Internet)."""
+    request_base_url = resolve_request_base_url(request)
+    saved_public_url = database.get_setting("public_hub_url") or os.environ.get("HIMAYA_PUBLIC_URL")
+    public_ip = get_public_ip()
+    lan_ip = get_lan_ip()
+    is_public_domain = "onrender.com" in request_base_url or request_base_url.startswith("https://") or bool(os.environ.get("RENDER"))
+
+    if saved_public_url:
+        internet_hub_url = saved_public_url.rstrip("/")
+    elif is_public_domain:
+        internet_hub_url = request_base_url
+    else:
+        internet_hub_url = f"http://{public_ip}:8000"
+
     if hub_url:
         resolved_url = hub_url.rstrip("/")
-    elif target == "internet":
-        saved_public_url = database.get_setting("public_hub_url") or os.environ.get("HIMAYA_PUBLIC_URL")
-        public_ip = get_public_ip()
-        resolved_url = saved_public_url.rstrip("/") if saved_public_url else f"http://{public_ip}:8000"
+    elif target == "internet" or is_public_domain:
+        resolved_url = internet_hub_url
     elif target == "lan":
-        lan_ip = get_lan_ip()
         resolved_url = f"http://{lan_ip}:8000"
     else:
-        lan_ip = get_lan_ip()
-        host_header = request.headers.get("host", f"{lan_ip}:8000")
-        resolved_url = f"http://{host_header}"
+        resolved_url = request_base_url
+
+    # Cloud guard: If container IP leaked, fallback to public internet URL
+    if is_public_domain and (resolved_url.startswith("http://10.") or resolved_url.startswith("http://172.")):
+        resolved_url = internet_hub_url
 
     target_url = f"{resolved_url}/enroll/mobile"
     img = qrcode.make(target_url)
@@ -269,11 +384,18 @@ async def get_enrollment_qr(request: Request, target: Optional[str] = "auto", hu
 @app.get("/enroll/win")
 async def get_windows_installer_script(request: Request, target: Optional[str] = "auto", hub_url: Optional[str] = None):
     """Serves the 1-click PowerShell installer script for any Windows PC over Internet or LAN."""
+    request_base_url = resolve_request_base_url(request)
     lan_ip = get_lan_ip()
     public_ip = get_public_ip()
     saved_public_url = database.get_setting("public_hub_url") or os.environ.get("HIMAYA_PUBLIC_URL")
+
     lan_hub_url = f"http://{lan_ip}:8000"
-    internet_hub_url = saved_public_url.rstrip("/") if saved_public_url else f"http://{public_ip}:8000"
+    if saved_public_url:
+        internet_hub_url = saved_public_url.rstrip("/")
+    elif "onrender.com" in request_base_url or request_base_url.startswith("https://"):
+        internet_hub_url = request_base_url
+    else:
+        internet_hub_url = f"http://{public_ip}:8000"
 
     if hub_url:
         primary_hub = hub_url.rstrip("/")
@@ -282,8 +404,7 @@ async def get_windows_installer_script(request: Request, target: Optional[str] =
     elif target == "lan":
         primary_hub = lan_hub_url
     else:
-        host_header = request.headers.get("host", f"{lan_ip}:8000")
-        primary_hub = f"http://{host_header}"
+        primary_hub = request_base_url
 
     script = f'''# Himaya Automatic Windows Agent Installer (Internet & LAN Multi-Homed)
 $ErrorActionPreference = "Stop"
@@ -406,9 +527,10 @@ Write-Host "========================================================" -Foregroun
 
 @app.get("/enroll/win/agent.py")
 async def get_windows_agent_file():
-    if not WINDOWS_AGENT_PATH.exists():
+    agent_path = get_windows_agent_path()
+    if not agent_path.exists():
         raise HTTPException(status_code=404, detail="Agent script not found")
-    return FileResponse(WINDOWS_AGENT_PATH, media_type="text/x-python")
+    return FileResponse(agent_path, media_type="text/x-python")
 
 
 @app.get("/enroll/mobile", response_class=HTMLResponse)
@@ -417,18 +539,29 @@ async def get_mobile_enrollment_page(request: Request, target: Optional[str] = "
     lan_ip = get_lan_ip()
     public_ip = get_public_ip()
     saved_public_url = database.get_setting("public_hub_url") or os.environ.get("HIMAYA_PUBLIC_URL")
-    lan_hub_url = f"http://{lan_ip}:8000"
-    internet_hub_url = saved_public_url.rstrip("/") if saved_public_url else f"http://{public_ip}:8000"
+    request_base_url = resolve_request_base_url(request)
+    is_public_domain = "onrender.com" in request_base_url or request_base_url.startswith("https://") or bool(os.environ.get("RENDER"))
+
+    if saved_public_url:
+        internet_hub_url = saved_public_url.rstrip("/")
+    elif is_public_domain:
+        internet_hub_url = request_base_url
+    else:
+        internet_hub_url = f"http://{public_ip}:8000"
+
+    lan_hub_url = internet_hub_url if is_public_domain else f"http://{lan_ip}:8000"
 
     if hub_url:
         active_url = hub_url.rstrip("/")
-    elif target == "internet":
+    elif is_public_domain or target == "internet":
         active_url = internet_hub_url
     elif target == "lan":
         active_url = lan_hub_url
     else:
-        host_header = request.headers.get("host", f"{lan_ip}:8000")
-        active_url = f"http://{host_header}"
+        active_url = request_base_url
+
+    if is_public_domain and (active_url.startswith("http://10.") or active_url.startswith("http://172.")):
+        active_url = internet_hub_url
 
     pin = get_enrollment_pin()
 
@@ -576,7 +709,8 @@ async def pair_device(body: PairRequest):
 async def register_device(body: DeviceCreate):
     existing = database.get_device(body.device_id)
     if existing:
-        raise HTTPException(status_code=400, detail=f"Device {body.device_id} already registered")
+        database.update_device_status(body.device_id, status=existing.get("status", "online"), ip=body.ip or existing.get("ip"))
+        return database.get_device(body.device_id)
 
     dev = database.insert_device(
         device_id=body.device_id,
@@ -601,6 +735,28 @@ async def get_device(device_id: str):
     return dev
 
 
+@app.delete("/devices/{device_id}")
+async def delete_device(device_id: str):
+    dev = database.get_device(device_id)
+    if not dev:
+        raise HTTPException(status_code=404, detail=f"Device {device_id} not found")
+    database.delete_device(device_id)
+    # Clean up any disk snapshots associated with this device
+    dev_snap_dir = SNAPSHOTS_DIR / device_id
+    if dev_snap_dir.exists():
+        try:
+            shutil.rmtree(dev_snap_dir, ignore_errors=True)
+        except Exception:
+            pass
+    emit(Event(
+        device_id=device_id,
+        type=EventType.POLICY_SYNC,
+        data={"action": "device_deleted", "device_id": device_id},
+        timestamp=datetime.now(timezone.utc)
+    ))
+    return {"status": "deleted", "device_id": device_id}
+
+
 @app.get("/events")
 async def get_events(limit: int = 50):
     return database.list_events(limit=limit)
@@ -620,7 +776,20 @@ async def ws_feed(ws: WebSocket):
             "events": recent_events
         })
         while True:
-            await ws.receive_text()
+            raw_msg = await ws.receive_text()
+            try:
+                msg = json.loads(raw_msg)
+                if msg.get("type") == "test_dns_block":
+                    dev_id = msg.get("device_id")
+                    if dev_id:
+                        emit(Event(
+                            device_id=dev_id,
+                            type=EventType.DNS_BLOCK,
+                            data={"host": msg.get("host", "blocked-threat-domain.com")},
+                            timestamp=datetime.now(timezone.utc)
+                        ))
+            except Exception:
+                pass
     except WebSocketDisconnect:
         pass
     except Exception:
@@ -690,7 +859,9 @@ async def log_vpn_attempt(device_id: str, interface: str = ""):
 
 
 @app.post("/agents/{device_id}/policy-sync")
-async def policy_sync(device_id: str, rules: dict = {}):
+async def policy_sync(device_id: str, rules: Optional[dict] = None):
+    if rules is None:
+        rules = {}
     now = datetime.now(timezone.utc)
     emit(Event(
         device_id=device_id,

@@ -7,6 +7,7 @@ Listens for UDP DNS queries from network clients (Android VPN / Windows Agent / 
 - Forwards clean queries to upstream secure resolver (Quad9 / Cloudflare Family)
 """
 from __future__ import annotations
+import concurrent.futures
 import socket
 import struct
 import threading
@@ -32,15 +33,21 @@ POPULAR_BLOCKLIST: Set[str] = {
 
 
 def parse_dns_name(data: bytes, offset: int = 12) -> tuple[str, int]:
-    """Parse standard DNS QNAME label format."""
+    """Parse standard DNS QNAME label format safely."""
     labels = []
     curr = offset
-    while curr < len(data):
+    data_len = len(data)
+    while curr < data_len:
         length = data[curr]
         if length == 0:
             curr += 1
             break
+        if length >= 192:  # DNS compression pointer (0xC0)
+            curr += 2
+            break
         curr += 1
+        if curr + length > data_len:
+            break
         labels.append(data[curr:curr + length].decode("utf-8", errors="ignore"))
         curr += length
     return ".".join(labels).lower(), curr
@@ -48,6 +55,8 @@ def parse_dns_name(data: bytes, offset: int = 12) -> tuple[str, int]:
 
 def build_sinkhole_response(query_data: bytes, domain: str) -> bytes:
     """Construct a DNS A-record response pointing to 0.0.0.0 (Sinkhole)."""
+    if len(query_data) < 12:
+        return b""
     tx_id = query_data[:2]
     flags = b"\x81\x80"  # Standard query response, No error
     qdcount = query_data[4:6]
@@ -57,7 +66,8 @@ def build_sinkhole_response(query_data: bytes, domain: str) -> bytes:
 
     # Find end of question section
     _, qend = parse_dns_name(query_data, 12)
-    qsection = query_data[12:qend + 4]  # includes QTYPE and QCLASS
+    qsection_end = min(len(query_data), qend + 4)
+    qsection = query_data[12:qsection_end]  # includes QTYPE and QCLASS
 
     # Answer: Name pointer to question (0xC00C), Type A (1), Class IN (1), TTL 60, Length 4, IP 0.0.0.0
     answer = b"\xc0\x0c" + b"\x00\x01\x00\x01" + struct.pack(">I", 60) + b"\x00\x04" + b"\x00\x00\x00\x00"
@@ -73,6 +83,7 @@ class DnsFilterServer:
         self.running = False
         self.sock: Optional[socket.socket] = None
         self.thread: Optional[threading.Thread] = None
+        self.pool: Optional[concurrent.futures.ThreadPoolExecutor] = None
         self.custom_blocked: Set[str] = set(POPULAR_BLOCKLIST)
 
     def is_blocked(self, domain: str) -> bool:
@@ -88,13 +99,15 @@ class DnsFilterServer:
             if len(data) < 12:
                 return
             domain, _ = parse_dns_name(data, 12)
+            if not domain:
+                return
 
             client_ip = client_addr[0]
 
             if self.is_blocked(domain):
                 # Sinkhole
                 resp = build_sinkhole_response(data, domain)
-                if self.sock:
+                if self.sock and resp:
                     self.sock.sendto(resp, client_addr)
                 if self.on_block_callback:
                     self.on_block_callback(client_ip, domain)
@@ -119,11 +132,13 @@ class DnsFilterServer:
             self.sock.bind((self.host, self.port))
             self.sock.settimeout(1.0)
             self.running = True
+            self.pool = concurrent.futures.ThreadPoolExecutor(max_workers=16)
 
             while self.running:
                 try:
                     data, addr = self.sock.recvfrom(4096)
-                    threading.Thread(target=self.handle_request, args=(data, addr), daemon=True).start()
+                    if self.pool and self.running:
+                        self.pool.submit(self.handle_request, data, addr)
                 except socket.timeout:
                     continue
                 except Exception:
@@ -131,8 +146,13 @@ class DnsFilterServer:
         except Exception as e:
             print(f"[DNS Engine] Notice: Could not bind DNS on {self.host}:{self.port} ({e})")
         finally:
+            if self.pool:
+                self.pool.shutdown(wait=False)
             if self.sock:
-                self.sock.close()
+                try:
+                    self.sock.close()
+                except Exception:
+                    pass
 
     def start(self) -> None:
         self.thread = threading.Thread(target=self.run, daemon=True)

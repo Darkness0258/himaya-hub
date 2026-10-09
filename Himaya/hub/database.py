@@ -15,24 +15,121 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 DB_PATH = Path(__file__).parent / "himaya.db"
-DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
+
+# Load local .env file if present
+ENV_FILE = Path(__file__).parent / ".env"
+if not ENV_FILE.exists():
+    ENV_FILE = Path(__file__).parent.parent / ".env"
+if ENV_FILE.exists():
+    try:
+        with open(ENV_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    k, v = k.strip(), v.strip().strip('"').strip("'")
+                    if not os.environ.get(k):
+                        os.environ[k] = v
+    except Exception:
+        pass
+
+
+def get_database_url() -> Optional[str]:
+    return os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
+
+
+_pg_available: Optional[bool] = None
 
 
 def is_postgres() -> bool:
-    return bool(DATABASE_URL)
+    global _pg_available
+    db_url = get_database_url()
+    if not db_url:
+        return False
+    if _pg_available is False:
+        return False
+    return True
+
+
+def _safe_json_load(val: Any, default: Any = None) -> Any:
+    if val is None:
+        return default if default is not None else {}
+    if isinstance(val, (dict, list)):
+        return val
+    try:
+        return json.loads(val)
+    except Exception:
+        return default if default is not None else {}
+
+
+class CursorWrapper:
+    """Wraps database cursor to provide unified parameter placeholders and lastrowid across SQLite and PostgreSQL."""
+    def __init__(self, raw_cursor, is_pg: bool):
+        self._cur = raw_cursor
+        self._is_pg = is_pg
+        self.lastrowid = getattr(raw_cursor, "lastrowid", None)
+
+    def execute(self, sql: str, params: Any = ()):
+        if self._is_pg:
+            # PostgreSQL requires %s instead of SQLite's ? placeholder
+            sql = sql.replace("?", "%s")
+            if isinstance(params, list):
+                params = tuple(params)
+            sql_clean = sql.strip().rstrip(";").strip()
+            # If INSERT into a table with serial ID, capture generated ID
+            if sql_clean.upper().startswith("INSERT") and "RETURNING" not in sql_clean.upper() and "ON CONFLICT" not in sql_clean.upper():
+                table_check = sql_clean.upper()
+                if any(t in table_check for t in ["INTO DEVICES", "INTO EVENTS", "INTO COMMANDS", "INTO SNAPSHOTS"]):
+                    try:
+                        self._cur.execute(sql_clean + " RETURNING id;", params)
+                        row = self._cur.fetchone()
+                        if row:
+                            if isinstance(row, dict) and "id" in row:
+                                self.lastrowid = row["id"]
+                            elif isinstance(row, (tuple, list)) and len(row) > 0:
+                                self.lastrowid = row[0]
+                        return self
+                    except Exception:
+                        pass
+        self._cur.execute(sql, params)
+        if not self._is_pg:
+            self.lastrowid = getattr(self._cur, "lastrowid", None)
+        return self
+
+    def fetchone(self):
+        return self._cur.fetchone()
+
+    def fetchall(self):
+        return self._cur.fetchall()
+
+    def __iter__(self):
+        return iter(self._cur)
+
+    def __getattr__(self, name):
+        return getattr(self._cur, name)
 
 
 class DBConnection:
     """Unified context manager supporting both SQLite and PostgreSQL (Supabase)."""
     def __init__(self):
+        global _pg_available
         self.is_pg = is_postgres()
         if self.is_pg:
-            import psycopg2
-            from psycopg2.extras import RealDictCursor
-            url = DATABASE_URL
-            if url.startswith("postgres://"):
-                url = url.replace("postgres://", "postgresql://", 1)
-            self.conn = psycopg2.connect(url, cursor_factory=RealDictCursor)
+            try:
+                import psycopg2
+                from psycopg2.extras import RealDictCursor
+                url = get_database_url() or ""
+                if url.startswith("postgres://"):
+                    url = url.replace("postgres://", "postgresql://", 1)
+                self.conn = psycopg2.connect(url, cursor_factory=RealDictCursor, connect_timeout=5)
+                _pg_available = True
+            except Exception as e:
+                print(f"[Database Warning] Could not connect to PostgreSQL: {e}")
+                print("[Database Warning] Gracefully falling back to local SQLite database.")
+                _pg_available = False
+                self.is_pg = False
+                self.conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+                self.conn.row_factory = sqlite3.Row
         else:
             self.conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
             self.conn.row_factory = sqlite3.Row
@@ -48,13 +145,10 @@ class DBConnection:
         self.conn.close()
 
     def cursor(self):
-        return self.conn.cursor()
+        return CursorWrapper(self.conn.cursor(), self.is_pg)
 
     def execute(self, sql: str, params: tuple = ()):
-        cur = self.conn.cursor()
-        if self.is_pg:
-            # Adapt SQLite ? placeholders to PostgreSQL %s
-            sql = sql.replace("?", "%s")
+        cur = self.cursor()
         cur.execute(sql, params)
         return cur
 
@@ -76,9 +170,10 @@ def get_connection():
 
 def init_db() -> None:
     """Initialize database tables and indexes."""
-    with get_connection() as conn:
-        if is_postgres():
-            conn.executescript("""
+    try:
+        with get_connection() as conn:
+            if conn.is_pg:
+                conn.executescript("""
                 CREATE TABLE IF NOT EXISTS devices (
                     id SERIAL PRIMARY KEY,
                     device_id TEXT UNIQUE NOT NULL,
@@ -135,8 +230,8 @@ def init_db() -> None:
                 CREATE INDEX IF NOT EXISTS idx_events_ts ON events(timestamp DESC);
                 CREATE INDEX IF NOT EXISTS idx_cmds_dev ON commands(device_id, status);
             """)
-        else:
-            conn.executescript("""
+            else:
+                conn.executescript("""
                 CREATE TABLE IF NOT EXISTS devices (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     device_id TEXT UNIQUE NOT NULL,
@@ -193,7 +288,9 @@ def init_db() -> None:
                 CREATE INDEX IF NOT EXISTS idx_events_ts ON events(timestamp DESC);
                 CREATE INDEX IF NOT EXISTS idx_cmds_dev ON commands(device_id, status);
             """)
-        conn.commit()
+            conn.commit()
+    except Exception as e:
+        print(f"[Database Error] Table initialization encountered error: {e}")
 
 
 def clear_all_data() -> None:
@@ -268,6 +365,18 @@ def update_device_status(device_id: str, status: str, ip: Optional[str] = None, 
         conn.commit()
 
 
+def delete_device(device_id: str) -> bool:
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM devices WHERE device_id = ?", (device_id,))
+        cursor.execute("DELETE FROM commands WHERE device_id = ?", (device_id,))
+        cursor.execute("DELETE FROM rules WHERE device_id = ?", (device_id,))
+        cursor.execute("DELETE FROM events WHERE device_id = ?", (device_id,))
+        cursor.execute("DELETE FROM snapshots WHERE device_id = ?", (device_id,))
+        conn.commit()
+        return True
+
+
 # --- Event Operations ---
 def insert_event(device_id: str, event_type: str, data: dict, timestamp: str) -> int:
     with get_connection() as conn:
@@ -292,10 +401,7 @@ def list_events(limit: int = 50) -> List[Dict[str, Any]]:
         rows = cursor.fetchall()
         result = []
         for r in reversed(rows):
-            try:
-                parsed_data = json.loads(r["data"])
-            except Exception:
-                parsed_data = {}
+            parsed_data = _safe_json_load(r["data"], {})
             result.append({
                 "id": r["id"],
                 "device_id": r["device_id"],
@@ -333,15 +439,12 @@ def pop_pending_commands(device_id: str) -> List[Dict[str, Any]]:
             return []
 
         ids = [r["id"] for r in rows]
-        cursor.execute(f"UPDATE commands SET status = 'consumed' WHERE id IN ({','.join(['?']*len(ids))})", ids)
+        cursor.execute(f"UPDATE commands SET status = 'consumed' WHERE id IN ({','.join(['?']*len(ids))})", tuple(ids))
         conn.commit()
 
         results = []
         for r in rows:
-            try:
-                p = json.loads(r["payload"])
-            except Exception:
-                p = {}
+            p = _safe_json_load(r["payload"], {})
             results.append({
                 "id": r["id"],
                 "action": r["action"],
@@ -369,8 +472,8 @@ def get_device_rules(device_id: str) -> Dict[str, Any]:
             }
         return {
             "device_id": row["device_id"],
-            "blocked_categories": json.loads(row["blocked_categories"]),
-            "blocked_domains": json.loads(row["blocked_domains"]),
+            "blocked_categories": _safe_json_load(row["blocked_categories"], ["adult", "gambling"]),
+            "blocked_domains": _safe_json_load(row["blocked_domains"], []),
             "bedtime_enabled": bool(row["bedtime_enabled"]),
             "bedtime_start": row["bedtime_start"],
             "bedtime_end": row["bedtime_end"]
@@ -381,6 +484,12 @@ def save_device_rules(device_id: str, rules: Dict[str, Any]) -> None:
     now = datetime.now(timezone.utc).isoformat()
     with get_connection() as conn:
         cursor = conn.cursor()
+        # Use boolean for PostgreSQL, integer for SQLite
+        bedtime_val = rules.get("bedtime_enabled")
+        if conn.is_pg:
+            bedtime_param = bedtime_val
+        else:
+            bedtime_param = 1 if bedtime_val else 0
         cursor.execute("""
             INSERT INTO rules (device_id, blocked_categories, blocked_domains, bedtime_enabled, bedtime_start, bedtime_end, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -395,7 +504,7 @@ def save_device_rules(device_id: str, rules: Dict[str, Any]) -> None:
             device_id,
             json.dumps(rules.get("blocked_categories", [])),
             json.dumps(rules.get("blocked_domains", [])),
-            1 if rules.get("bedtime_enabled") else 0,
+            bedtime_param,
             rules.get("bedtime_start", "21:00"),
             rules.get("bedtime_end", "07:00"),
             now

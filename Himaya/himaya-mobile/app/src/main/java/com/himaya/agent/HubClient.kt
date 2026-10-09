@@ -2,12 +2,14 @@ package com.himaya.agent
 
 import android.net.Uri
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
@@ -111,6 +113,33 @@ class HubClient {
         val json = JSONObject(rules)
         val res = post("/agents/$deviceId/policy-sync", json.toString())
         return res?.isSuccessful == true
+    }
+
+    fun uploadSnapshot(deviceId: String, file: File): Boolean {
+        if (hubUrl.isEmpty()) return false
+        return try {
+            val cleanBase = hubUrl.trimEnd('/')
+            val fullUrl = "$cleanBase/agents/$deviceId/snapshot"
+
+            val requestBody = MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart(
+                    "file",
+                    file.name,
+                    file.toRequestBody("image/jpeg".toMediaTypeOrNull())
+                )
+                .build()
+
+            val request = Request.Builder()
+                .url(fullUrl)
+                .post(requestBody)
+                .build()
+            client.newCall(request).execute().use { response ->
+                response.isSuccessful
+            }
+        } catch (e: Exception) {
+            false
+        }
     }
 
     private fun post(path: String, jsonBody: String): Response? {

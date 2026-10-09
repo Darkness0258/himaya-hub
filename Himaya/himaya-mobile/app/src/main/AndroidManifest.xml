@@ -17,6 +17,9 @@
     <!-- VPN service for DNS filtering -->
     <uses-permission android:name="android.permission.BIND_VPN_SERVICE" />
 
+    <!-- Screen capture for on-demand screen share -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+
     <!-- Device admin for remote lock/wipe -->
     <uses-permission android:name="android.permission.BIND_DEVICE_ADMIN" />
 
@@ -67,6 +70,12 @@
                 <action android:name="android.net.VpnService" />
             </intent-filter>
         </service>
+
+        <!-- Screen share service for on-demand screen capture -->
+        <service
+            android:name="com.himaya.agent.ScreenShareService"
+            android:foregroundServiceType="mediaProjection"
+            android:exported="false" />
 
         <!-- Device admin receiver for remote actions -->
         <receiver

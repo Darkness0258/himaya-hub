@@ -1,63 +1,94 @@
-# Himaya — Family Device Safety Hub
+# 🛡️ Himaya — Family Device Safety & Defense Hub
 
-A local-first system where one admin dashboard filters content, tracks activity, and remotely controls every device in the house — stronger than typical parental-control apps, built to survive VPNs and factory resets, but never covert.
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Darkness0258/himaya-hub)
+[![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-blue?logo=github)](https://github.com/Darkness0258/himaya-hub)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://hub.docker.com)
 
-## Mission
-Build a local-first system where one admin dashboard filters content, tracks activity, and remotely controls every device in the house — stronger than typical parental-control apps, built to survive VPNs and factory resets, but never covert.
+A real-time parental defense and device management platform where one centralized admin cockpit monitors telemetry, enforces DNS content sinkholing, logs activity, and remotely controls devices across the house and over the Internet.
 
-## Ground rules
-- **Visible, not hidden.** Every managed device shows a persistent "Himaya active" indicator. No disguised icons, no stealth mode.
-- **Local-first.** The hub runs on hardware you own. No third-party cloud touches family data by default.
-- **Consent for adults.** Enroll adults only if they agree — this is a child-safety tool, not surveillance of people who haven't opted in.
-- **Log events, not content.** Store what happened (blocked URL, VPN attempt, time online), never message or call content.
+---
 
-## Architecture
-1. **Hub** — spare PC or Raspberry Pi at home. Runs the DNS filter, device registry, rules engine, dashboard, and event feed.
-2. **Agents** — one per device. Android first (Kotlin), then Windows. iOS deferred to v2 — Apple's MDM/Screen Time APIs are far more restrictive, don't promise parity.
-3. **Parent app** — web/PWA, reaches the hub remotely over WireGuard. Reuse PHANTOM's dashboard, WireGuard tunnel, and auth — most of this is assembly, not new code.
+## 🚀 One-Click Cloud Deployment (Render + Supabase)
 
-## Admin feature set
-### Remote control — no limits
-- Instant lock / unlock
-- Force-close or block any app
-- Pause internet for one device instantly
-- Push a message/notification to the device
-- Remote wipe (lost/stolen device only, separate confirmation step)
-- Change filter rules or schedule from anywhere
+You can host the entire Himaya Hub online 24/7 on Render's free tier with persistent WebSockets and multi-device support.
 
-### Screen visibility — two modes
-| Mode | What it does | Why this shape |
-| --- | --- | --- |
-| Scheduled snapshots | Screenshot every N minutes (configurable), added to the activity timeline | What Bark and similar tools actually ship — catches patterns without a live feed |
-| On-demand live view | Admin starts a real-time session on request | Android enforces a persistent, unremovable notification the whole time it's active — can't be hidden without rooting the device, which kills the Play Store listing and opens the device to real attackers. Build the UX like starting tech support, not switching on a hidden camera |
+### Option 1: 1-Click Render Deploy
+Click the button below to deploy directly from the GitHub repository:
 
-## Continuous monitoring loops
-Each agent runs four background loops:
-- **Heartbeat** — every 15–30s, agent → hub. Missed heartbeats trigger a "device went dark" alert.
-- **VPN-guard** — watches `ConnectivityManager`/`onRevoke()` for new VPN interfaces; alerts instantly, blocks it if Device Owner mode is enrolled.
-- **Policy sync** — every 60s or on push; remote rule changes apply without reinstalling.
-- **Snapshot** — fires on the interval above, uploads over the WireGuard tunnel.
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Darkness0258/himaya-hub)
 
-Hub side: a WebSocket feed pushes all four loops to the dashboard live.
+1. Sign in to [Render](https://render.com).
+2. Connect your GitHub account and select repository: `Darkness0258/himaya-hub`.
+3. Choose **Docker** as the runtime.
+4. Set **Root Directory** to `hub` (or leave empty if using `render.yaml`).
+5. (Optional) In **Environment Variables**, add:
+   - `DATABASE_URL`: Your Supabase PostgreSQL Connection String (Transaction Pooler or Direct).
+   - `HIMAYA_PUBLIC_URL`: Your Render service URL (e.g., `https://himaya-hub.onrender.com`).
+6. Click **Create Web Service**. Your live hub will be up in ~2 minutes!
 
-## Stack
-- Hub backend: FastAPI, or your PHANTOM Axum backend — device auth and WireGuard are already built
-- Dashboard: React/TS, same pattern as PHANTOM
-- Android agent: Kotlin — `DevicePolicyManager` (Device Owner mode), `VpnService`/`ConnectivityManager` (VPN-guard), `MediaProjection` (screenshots + share)
-- Windows agent: C# or Rust service, running under a standard (non-admin) kid account
-- iOS: v2, parked
+---
 
-## Build loop
-Each phase ships something testable before the next starts:
-0. Prove DNS filtering works — run AdGuard Home for an hour
-1. Hub skeleton: device registry + WebSocket event feed
-2. Android agent: heartbeat + DNS enforcement
-3. VPN-guard loop + Device Owner enrollment
-4. Remote actions: lock / block / pause / wipe
-5. Snapshot loop + timeline UI
-6. On-demand screen-share session — build this last, it's the highest-risk feature to get wrong
+### Option 2: Supabase Cloud Database Setup (Optional)
+By default, the Hub runs on zero-configuration SQLite. To scale with a cloud PostgreSQL database:
+1. Create a free project at [Supabase](https://supabase.com).
+2. Open the **SQL Editor** in Supabase and run the schema file located in [`hub/supabase_schema.sql`](hub/supabase_schema.sql).
+3. In **Project Settings** > **Database**, copy your **Connection String (URI)**.
+4. Add the connection string to Render's environment variables as `DATABASE_URL`.
+   The Hub automatically detects `DATABASE_URL` and switches to PostgreSQL tables seamlessly!
 
-## Unverified — confirm before building
-- Exact `DevicePolicyManager` + `DISALLOW_CONFIG_VPN` behavior on your target Android versions
-- Whether any OEM (Samsung, Xiaomi) weakens the MediaProjection notification requirement — stock Android doesn't allow it
-- If this ever becomes a product for other families rather than personal use: consent and disclosure requirements get stricter than "I own the hardware," and vary by country
+---
+
+## 💻 Running Locally
+
+### 1. Start the Hub
+```powershell
+cd hub
+pip install -r requirements.txt
+python main.py
+```
+The dashboard will be live at: **`http://localhost:8000`**
+
+### 2. Auto-Enroll Real Devices
+
+#### Windows PC (1-Click Auto-Enroll):
+Open PowerShell on any target PC and run:
+```powershell
+irm http://localhost:8000/enroll/win | iex
+```
+*(If deployed online, replace `http://localhost:8000` with your Render URL, e.g., `irm https://himaya-hub.onrender.com/enroll/win | iex`)*
+
+This installer:
+- Creates a persistent background agent in `%LOCALAPPDATA%\HimayaAgent`
+- Sets up an automatic Windows startup trigger (`.vbs`) to survive reboots
+- Sends real-time heartbeats and screen snapshots to the Hub
+- Handles remote locks, internet pauses, and parental policy syncs
+
+#### Android Phone / Tablet:
+1. Open the dashboard and click **⚡ Auto-Enroll Devices**.
+2. Scan the generated QR code or open:
+   `http://<HUB_IP>:8000/enroll/mobile`
+3. Enter the 6-digit Quick PIN to establish protected Device Owner status.
+
+---
+
+## 🛡️ Admin Cockpit Capabilities
+
+### Remote Control & Defense
+- **Instant Device Lock / Unlock**: Remotely freeze target screens with one click.
+- **Internet Pause / Unpause**: Cut off network access immediately.
+- **Content Filtering & DNS Sinkhole**: Real-time sinkholing of malicious domains, adult sites, and gambling trackers to `0.0.0.0`.
+- **Bedtime Curfews & Schedules**: Automated cutoffs with configurable time windows.
+- **Live Activity Telemetry**: Sub-second WebSocket stream with connection status, security alerts, and heartbeat watchdog (flags devices offline after 45s of missed beats).
+- **Screen Timeline**: Visual inspection of periodic snapshot captures.
+
+---
+
+## 🏗️ Architecture
+
+1. **Hub Backend**: FastAPI + Uvicorn + WebSockets + Dual DB (SQLite & PostgreSQL).
+2. **DNS Sinkhole**: Custom UDP DNS proxy forwarding clean queries to Quad9/Cloudflare Family and sinkholing blacklisted domains.
+3. **LAN Discovery**: UDP beacon responder on port 5354 for zero-touch local Wi-Fi pairing.
+4. **Dashboard**: High-performance dark-mode cybersecurity cockpit with Chart.js, Lucide icons, and live WebSocket telemetry.
+5. **Windows Agent**: Native Python background agent running silently with automatic failover and multi-homed endpoint switching.
+6. **Android Agent**: Kotlin Device Policy Manager + VPNService for DNS enforcement and screenshot uploads.

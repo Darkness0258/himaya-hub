@@ -1,4 +1,4 @@
-import { Devices, Activity, TrendingUp } from 'lucide-react';
+import { Monitor, Activity, TrendingUp } from 'lucide-react';
 import MetricCard from './MetricCard';
 
 type Snapshot = {
@@ -21,7 +21,7 @@ export default function Overview({ snapshot }: Props) {
         <MetricCard
           label="Online Devices"
           value={onlineCount}
-          icon={Devices}
+          icon={Monitor}
           color="#22c55e"
           bg="bg-emerald-500/10"
           border="border-emerald-500/20"
@@ -69,7 +69,7 @@ export default function Overview({ snapshot }: Props) {
                 </div>
               </div>
             ))}
-            {recentEvents.length === 0 && <p style={{ color: '#64748b', fontStyle: 'italic' }}>No events yet</p>}
+            {recentEvents.length === 0 && <p className="empty-state">No events yet</p>}
           </div>
         </div>
       </div>

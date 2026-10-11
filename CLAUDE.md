@@ -8,6 +8,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 1. **Hub Backend** (FastAPI + WebSockets + SQLite/PostgreSQL) — Central registry, DNS sinkhole, LAN discovery, event broadcasting
 2. **Windows Agent** (Python) — Background protection engine with DNS filtering, screen lock, VPN detection, auto-enrollment
 3. **Android Agent** (Kotlin/Gradle) — Device Policy Manager + VPNService for DNS enforcement and screenshot uploads
+4. **Dashboard** (React 19 + TypeScript + Vite) — Cybersecurity cockpit with live WebSocket telemetry
+
+## Recent Changes (Working Tree)
+- **Dashboard Components** updated: ControlPanel, DeviceList, EventFeed, MetricCard, Overview
+  - ControlPanel: Added `activeAction` state tracking, fixed import (removed unused `Clock`)
+  - DeviceList: Simplified imports (Smartphone, ChevronRight), removed unused PlatformIcon component
+  - EventFeed: Updated icon imports, changed screenshot icon from Clock to Camera
+  - MetricCard: Fixed LucideIcon type import
+  - Overview: Changed Devices icon to Monitor for online devices metric
 
 ## Build, Lint, Test Commands
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Lock, Wifi, Activity, Clock, Power, Trash2 } from 'lucide-react';
+import { Lock, Wifi, Activity, Power, Trash2 } from 'lucide-react';
 
 type Device = {
   id: number;
@@ -13,16 +13,31 @@ type Device = {
 };
 
 type Props = {
-  deviceId: string;
   device: Device | undefined;
 };
 
-export default function ControlPanel({ deviceId, device }: Props) {
-  const [action, setAction] = useState<string>('');
+export default function ControlPanel({ device }: Props) {
+  const [activeAction, setActiveAction] = useState<string>('');
   const [message, setMessage] = useState('');
 
-  const sendAction = (actionType: string) => {
-    console.log(`Sending ${actionType} to ${deviceId}`);
+  const sendAction = async (actionType: string) => {
+    if (!device || !device.device_id) return;
+    // Strict allowlist validation: alphanumeric, dash, underscore only (1-64 chars)
+    if (!/^[a-zA-Z0-9_-]{1,64}$/.test(device.device_id)) {
+      console.error('sendAction blocked: invalid device_id format');
+      return;
+    }
+    try {
+      // Use relative URL to avoid hardcoded origin (SSRF/CSRF defense)
+      await fetch(`/admin/${device.device_id}/action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: actionType })
+      });
+      setActiveAction(actionType);
+    } catch (e) {
+      console.error('Action failed:', e);
+    }
   };
 
   const actionButtons: { label: string; action: string; icon: typeof Lock; danger?: boolean }[] = [
@@ -50,7 +65,7 @@ export default function ControlPanel({ deviceId, device }: Props) {
             <button
               key={actionType}
               className={danger ? 'danger' : ''}
-              onClick={() => sendAction(actionType)}
+              onClick={() => { sendAction(actionType); setActiveAction(actionType); }}
               disabled={!device}
             >
               <Icon size={14} />
@@ -65,8 +80,8 @@ export default function ControlPanel({ deviceId, device }: Props) {
           <button className="tab">Logs</button>
         </div>
 
-        {action === 'push_notification' && (
-          <div style={{ marginTop: '1rem', backgroundColor: 'rgba(59,130,246,0.08)', border: '1px solid #3b82f6', borderRadius: '8px', padding: '0.75rem' }}>
+        {activeAction === 'push_notification' && (
+          <div className="notification-form">
             <label style={{ fontWeight: 600, color: '#e2e8f0', display: 'block', marginBottom: '0.5rem' }}>
               Notification Message
             </label>
@@ -74,11 +89,10 @@ export default function ControlPanel({ deviceId, device }: Props) {
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Type a message to your child's device..."
-              style={{ width: '100%', minHeight: '80px', background: '#1a2538', color: '#e2e8f0', border: '1px solid #334155', borderRadius: '6px', padding: '0.5rem', fontFamily: 'inherit', resize: 'vertical' }}
             />
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-              <button onClick={() => { sendAction('push_notification'); setMessage(''); }} style={{ padding: '0.4rem 0.75rem', borderRadius: '6px', border: '1px solid #334155', background: '#3b82f6', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>Send</button>
-              <button onClick={() => setMessage('')} style={{ padding: '0.4rem 0.75rem', borderRadius: '6px', border: '1px solid #334155', background: 'transparent', color: '#94a3b8', cursor: 'pointer' }}>Cancel</button>
+            <div className="btn-row">
+              <button onClick={() => { sendAction('push_notification'); setMessage(''); }} className="btn-primary">Send</button>
+              <button onClick={() => setMessage('')} className="btn-secondary">Cancel</button>
             </div>
           </div>
         )}

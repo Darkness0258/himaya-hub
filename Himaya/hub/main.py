@@ -564,6 +564,7 @@ async def get_mobile_enrollment_page(request: Request, target: Optional[str] = "
         active_url = internet_hub_url
 
     pin = get_enrollment_pin()
+    pin_escaped = pin.replace('\\', '\\\\').replace("'", "\\'").replace('\n', '\\n').replace('\r', '\\r').replace('</', '<\\/')
 
     html = f"""<!DOCTYPE html>
 <html>
@@ -661,6 +662,50 @@ async def get_mobile_enrollment_page(request: Request, target: Optional[str] = "
         <a href="intent://enroll?hub={active_url}&pin={pin}#Intent;scheme=himaya;package=com.himaya.agent;end" class="btn">
             ⚡ Open Himaya App & Auto-Pair
         </a>
+
+        <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 12px;">
+                Himaya App not installed? Enroll via web below.
+            </p>
+            <form onsubmit="return pairWeb(event)" style="display: flex; flex-direction: column; gap: 12px;">
+                <input type="text" id="deviceName" placeholder="Device name (e.g. Child Phone)"
+                    style="padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15); background: #0f172a; color: #f8fafc; font-size: 0.9rem; font-family: inherit;" />
+                <input type="text" id="deviceId" placeholder="Device ID (optional, auto-generated)"
+                    style="padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15); background: #0f172a; color: #f8fafc; font-size: 0.9rem; font-family: monospace;" />
+                <button type="submit" style="padding: 14px; border-radius: 12px; border: none; background: #6366f1; color: #fff; font-size: 0.95rem; font-weight: 700; cursor: pointer;">
+                    🔗 Pair via Web
+                </button>
+            </form>
+            <div id="pairResult" style="margin-top: 16px; display: none;">
+                <div style="padding: 12px; border-radius: 12px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; font-size: 0.85rem;">
+                    ✅ Paired! Device ID: <span id="pairedId"></span>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        async function pairWeb(e) {{
+            e.preventDefault();
+            const pin = '{pin_escaped}';
+            const name = document.getElementById('deviceName').value || 'Mobile Device';
+            let deviceId = document.getElementById('deviceId').value.trim();
+            if (!deviceId) deviceId = 'android-' + Math.random().toString(36).substring(2, 8);
+
+            const res = await fetch('/enroll/pair', {{
+                method: 'POST',
+                headers: {{ 'Content-Type': 'application/json' }},
+                body: JSON.stringify({{ pin, name, platform: 'android', device_id: deviceId }})
+            }});
+            const data = await res.json();
+            if (data.status === 'paired') {{
+                document.getElementById('pairedId').textContent = data.device_id;
+                document.getElementById('pairResult').style.display = 'block';
+            }} else {{
+                alert('Pairing failed: ' + (data.detail || 'Unknown error'));
+            }}
+            return false;
+        }}
+        </script>
     </div>
 </body>
 </html>"""
@@ -673,6 +718,7 @@ class PairRequest(BaseModel):
     platform: str
     owner_type: str = "child"
     ip: Optional[str] = None
+    device_id: Optional[str] = None
 
 
 @app.post("/enroll/pair")
@@ -682,6 +728,7 @@ async def pair_device(body: PairRequest):
     if body.pin != expected_pin:
         raise HTTPException(status_code=400, detail="Invalid enrollment PIN")
 
+    # Always generate server-side device_id; reject client-provided to prevent IDOR
     device_id = f"{body.platform}-{uuid.uuid4().hex[:6]}"
     dev = database.insert_device(
         device_id=device_id,
@@ -691,7 +738,6 @@ async def pair_device(body: PairRequest):
         ip=body.ip
     )
     emit(Event(
-
         device_id=device_id,
         type=EventType.POLICY_SYNC,
         data={"action": "device_paired", "device": dev},

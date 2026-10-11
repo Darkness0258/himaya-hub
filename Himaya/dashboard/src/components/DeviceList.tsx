@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Monitor, Cpu, Mobile, Key, Wifi, Lock, Shield } from 'lucide-react';
+import { Monitor, Smartphone, ChevronRight } from 'lucide-react';
 
 type Device = {
   id: number;
@@ -21,15 +20,20 @@ type Props = {
 };
 
 const platformIcons: Record<string, typeof Monitor> = {
-  android: Mobile,
+  android: Smartphone,
   windows: Monitor,
-  ios: Iphone,
+  ios: Smartphone,
   macos: Monitor,
 };
 
-function PlatformIcon({ platform }: { platform: string }) {
-  const Icon = platformIcons[platform] || Monitor;
-  return <Icon size={18} />;
+function getStatusClass(status: string): string {
+  switch (status) {
+    case 'online': return 'online';
+    case 'offline': return 'offline';
+    case 'paused': return 'paused';
+    case 'locked': return 'locked';
+    default: return 'offline';
+  }
 }
 
 export default function DeviceList({ devices, selectedDevice, onSelect, expandedDevice, onToggleExpand }: Props) {
@@ -62,7 +66,7 @@ export default function DeviceList({ devices, selectedDevice, onSelect, expanded
                     {dev.device_id} · {dev.platform} · {dev.owner_type}
                   </div>
                 </div>
-                <div className="device-status" style={{ color: dev.status === 'online' ? '#22c55e' : '#ef4444' }}>
+                <div className={`device-status ${getStatusClass(dev.status)}`}>
                   {dev.status}
                 </div>
                 <div className="device-actions">
@@ -73,7 +77,7 @@ export default function DeviceList({ devices, selectedDevice, onSelect, expanded
               </div>
             );
           })}
-          {devices.length === 0 && <p style={{ color: '#64748b', fontStyle: 'italic' }}>No devices registered</p>}
+          {devices.length === 0 && <p className="empty-state">No devices registered</p>}
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { ChevronRight, Wrench, AlertTriangle, Clock, Power } from 'lucide-react';
+import { Activity, Wrench, AlertTriangle, Lock, Power, Shield, Camera } from 'lucide-react';
 
 type Event = {
   id: number;
@@ -22,12 +22,14 @@ function eventTypeIcon(type: string) {
       return <AlertTriangle size={14} />;
     case 'device_locked':
       return <Lock size={14} />;
+    case 'device_unlocked':
+      return <Power size={14} />;
     case 'device_went_dark':
       return <Power size={14} />;
     case 'policy_sync':
       return <Shield size={14} />;
     case 'screenshot':
-      return <Clock size={14} />;
+      return <Camera size={14} />;
     default:
       return <Activity size={14} />;
   }
@@ -39,6 +41,7 @@ function eventTypeLabel(type: string) {
     vpn_attempt: 'VPN Attempt',
     dns_block: 'DNS Blocked',
     device_locked: 'Device Locked',
+    device_unlocked: 'Device Unlocked',
     device_went_dark: 'Device Offline',
     policy_sync: 'Policy Sync',
     screenshot: 'Screenshot',
@@ -65,7 +68,7 @@ export default function EventFeed({ events }: Props) {
               </div>
             </div>
           ))}
-          {events.length === 0 && <p style={{ color: '#64748b', fontStyle: 'italic' }}>No events yet</p>}
+          {events.length === 0 && <p className="empty-state">No events yet</p>}
         </div>
       </div>
     </div>

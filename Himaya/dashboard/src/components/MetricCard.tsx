@@ -1,9 +1,9 @@
-import { IconType } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 type MetricCardProps = {
   label: string;
   value: string | number;
-  icon: IconType;
+  icon: LucideIcon;
   color: string;
   bg: string;
   border: string;

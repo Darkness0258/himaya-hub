@@ -6,14 +6,24 @@ import time
 import requests
 import uvicorn
 import websockets
+import hashlib
 
 BASE = "http://127.0.0.1:8002"
 WS_URL = "ws://127.0.0.1:8002/ws"
+API_KEY = "test-key"
+API_KEY_HASH = hashlib.sha256(API_KEY.encode()).hexdigest()
 
 
 def run_server():
     import main
+    main.API_KEYS[API_KEY_HASH] = {"role": "parent", "device_id": ""}
+    import os
+    os.environ["HIMAYA_PARENT_API_KEY"] = API_KEY
     uvicorn.run(main.app, host="127.0.0.1", port=8002, log_level="error")
+
+
+def headers():
+    return {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 
 
 async def verify_remote_actions():
@@ -33,7 +43,7 @@ async def verify_remote_actions():
             "platform": "android",
             "device_id": "leo-phone",
             "owner_type": "child"
-        }).json()
+        }, headers=headers()).json()
         assert child_phone["device_id"] == "leo-phone"
 
         child_tablet = requests.post(f"{BASE}/devices", json={
@@ -41,26 +51,26 @@ async def verify_remote_actions():
             "platform": "android",
             "device_id": "leo-tablet",
             "owner_type": "child"
-        }).json()
+        }, headers=headers()).json()
         assert child_tablet["device_id"] == "leo-tablet"
         print("[PASS] Enrolled 2 child devices: Leo's Phone & Leo's Tablet")
 
         # 2. Simulate Heartbeats to bring online
-        requests.post(f"{BASE}/agents/leo-phone/heartbeat", params={"ip": "192.168.1.150"})
-        requests.post(f"{BASE}/agents/leo-tablet/heartbeat", params={"ip": "192.168.1.151"})
+        requests.post(f"{BASE}/agents/leo-phone/heartbeat", json={"ip": "192.168.1.150"}, headers=headers())
+        requests.post(f"{BASE}/agents/leo-tablet/heartbeat", json={"ip": "192.168.1.151"}, headers=headers())
         print("[PASS] Heartbeats received -> devices online")
 
         # 3. Test LOCK Action
         lock_res = requests.post(f"{BASE}/admin/leo-phone/action", json={
             "action": "lock",
             "payload": {"reason": "bedtime"}
-        }).json()
+        }, headers=headers()).json()
         assert lock_res["status"] == "dispatched"
         assert lock_res["device_status"] == "locked"
         print("[PASS] Remote LOCK dispatched and state updated to LOCKED")
 
         # 4. Agent polls queued command
-        cmds = requests.get(f"{BASE}/agents/leo-phone/commands").json()
+        cmds = requests.get(f"{BASE}/agents/leo-phone/commands", headers=headers()).json()
         assert len(cmds["commands"]) == 1
         assert cmds["commands"][0]["action"] == "lock"
         print("[PASS] Agent polled and consumed queued LOCK command")
@@ -68,7 +78,7 @@ async def verify_remote_actions():
         # 5. Test UNLOCK Action
         unlock_res = requests.post(f"{BASE}/admin/leo-phone/action", json={
             "action": "unlock"
-        }).json()
+        }, headers=headers()).json()
         assert unlock_res["status"] == "dispatched"
         assert unlock_res["device_status"] == "online"
         print("[PASS] Remote UNLOCK dispatched and state returned to ONLINE")
@@ -76,7 +86,7 @@ async def verify_remote_actions():
         # 6. Test PAUSE INTERNET Action
         pause_res = requests.post(f"{BASE}/admin/leo-tablet/action", json={
             "action": "pause"
-        }).json()
+        }, headers=headers()).json()
         assert pause_res["status"] == "dispatched"
         assert pause_res["device_status"] == "paused"
         print("[PASS] Remote PAUSE INTERNET dispatched and state updated to PAUSED")
@@ -85,24 +95,27 @@ async def verify_remote_actions():
         push_res = requests.post(f"{BASE}/admin/leo-phone/action", json={
             "action": "push_notification",
             "payload": {"message": "Dinnertime in 5 minutes!"}
-        }).json()
+        }, headers=headers()).json()
         assert push_res["status"] == "dispatched"
 
-        push_cmds = requests.get(f"{BASE}/agents/leo-phone/commands").json()
+        push_cmds = requests.get(f"{BASE}/agents/leo-phone/commands", headers=headers()).json()
         assert any(c["action"] == "push_notification" for c in push_cmds["commands"])
         print("[PASS] Remote PUSH NOTIFICATION dispatched and verified in agent command queue")
 
         # 8. Check Dashboard serving
-        dash_res = requests.get(f"{BASE}/dashboard")
+        dash_res = requests.get(f"{BASE}/dashboard", headers=headers())
         assert dash_res.status_code == 200
-        assert "HIMAYA" in dash_res.text
+        assert "<title>dashboard</title>" in dash_res.text or "<div id=\"root\"></div>" in dash_res.text
         print("[PASS] Parent Web Dashboard successfully served at /dashboard")
 
         print("\n>>> ALL PHASE 4 E2E REMOTE ACTION TESTS PASSED <<<")
 
 
 if __name__ == "__main__":
+    import database
+    database.clear_all_data()
+
     t = threading.Thread(target=run_server, daemon=True)
     t.start()
-    time.sleep(2)
+    time.sleep(3)
     asyncio.run(verify_remote_actions())

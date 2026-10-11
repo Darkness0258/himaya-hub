@@ -74,7 +74,7 @@ class ScreenShareService : Service() {
         const val EXTRA_DEVICE_ID = "device_id"
         const val EXTRA_MEDIA_PROJECTION_DATA = "media_projection_data"
         const val EXTRA_MEDIA_PROJECTION_RESULT_CODE = "media_projection_result_code"
-        private const val MEDIA_PROJECTION_REQUEST_CODE = 1003
+        const val MEDIA_PROJECTION_REQUEST_CODE = 1003
 
         fun startCapture(context: Context, hubUrl: String, deviceId: String, resultCode: Int, data: Intent) {
             val intent = Intent(context, ScreenShareService::class.java).apply {
@@ -118,7 +118,8 @@ class ScreenShareService : Service() {
         intent?.getStringExtra(EXTRA_HUB_URL)?.let { if (it.isNotEmpty()) hubUrl = it }
         intent?.getStringExtra(EXTRA_DEVICE_ID)?.let { if (it.isNotEmpty()) deviceId = it }
         intent?.getIntExtra(EXTRA_MEDIA_PROJECTION_RESULT_CODE, 0)?.let { pendingResultCode = it }
-        intent?.getParcelableExtra<Intent>(EXTRA_MEDIA_PROJECTION_DATA)?.let { pendingResultIntent = it }
+        val data = intent?.getParcelableExtra<Intent>(EXTRA_MEDIA_PROJECTION_DATA)
+        data?.let { pendingResultIntent = it }
 
         hubClient.hubUrl = hubUrl
 
@@ -133,8 +134,9 @@ class ScreenShareService : Service() {
         startForeground(NOTIFICATION_ID, notification)
 
         // Initialize MediaProjection from the consent intent
-        if (pendingResultIntent != null && pendingResultCode == Activity.RESULT_OK) {
-            mediaProjection = mediaProjectionManager?.getMediaProjection(pendingResultCode, pendingResultIntent)
+        val resultIntent = pendingResultIntent
+        if (resultIntent != null && pendingResultCode == Activity.RESULT_OK) {
+            mediaProjection = mediaProjectionManager?.getMediaProjection(pendingResultCode, resultIntent)
             if (mediaProjection != null) {
                 startCapture()
             } else {

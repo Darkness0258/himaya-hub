@@ -7,6 +7,9 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
+    <!-- Notifications for Android 13+ -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- Foreground service for persistent agent -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
@@ -15,13 +18,13 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- VPN service for DNS filtering -->
-    <uses-permission android:name="android.permission.BIND_VPN_SERVICE" />
+    <!-- BIND_VPN_SERVICE is declared on the service, not as a uses-permission -->
 
     <!-- Screen capture for on-demand screen share -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 
     <!-- Device admin for remote lock/wipe -->
-    <uses-permission android:name="android.permission.BIND_DEVICE_ADMIN" />
+    <!-- BIND_DEVICE_ADMIN is declared on the receiver, not as a uses-permission -->
 
     <application
         android:name="com.himaya.agent.HimayaApplication"
@@ -29,7 +32,8 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.HimayaAgent"
+        android:theme="@style/Theme.HimayaAgent">
+
         <!-- Main Activity & Visible Dashboard Indicator with Deep-Link Enrollment -->
         <activity
             android:name="com.himaya.agent.MainActivity"
@@ -40,18 +44,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             <!-- Deep Link Auto-Enrollment over Internet & LAN -->
-            <intent-filter>
+            <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="himaya" android:host="enroll" />
             </intent-filter>
-            <intent-filter>
+            <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="http" android:pathPrefix="/enroll/mobile" />
-                <data android:scheme="https" android:pathPrefix="/enroll/mobile" />
+                <data android:scheme="http" android:host="*" android:pathPrefix="/enroll/mobile" />
+                <data android:scheme="https" android:host="*" android:pathPrefix="/enroll/mobile" />
             </intent-filter>
         </activity>
 

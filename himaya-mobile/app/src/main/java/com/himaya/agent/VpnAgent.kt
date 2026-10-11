@@ -102,17 +102,6 @@ class VpnAgent : VpnService() {
         stopSelf()
     }
 
-    /**
-     * Called when the service is being torn down.
-     */
-    override fun onTearingDown() {
-        Log.i(TAG, "VPN tearing down")
-        stopForeground(true)
-        vpnInterface?.close()
-        vpnInterface = null
-        super.onTearingDown()
-    }
-
     override fun onDestroy() {
         super.onDestroy()
         vpnInterface?.close()

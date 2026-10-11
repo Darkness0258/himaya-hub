@@ -12,7 +12,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textSize="24sp"
-        android:textColor="@android:color/hologreen_dark"
+        android:textColor="#2E7D32"
         android:layout_marginBottom="32dp"
         android:text="Himaya Agent" />
 

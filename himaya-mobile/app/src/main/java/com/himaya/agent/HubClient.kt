@@ -5,7 +5,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.RequestBody
 import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
@@ -121,12 +121,15 @@ class HubClient {
             val cleanBase = hubUrl.trimEnd('/')
             val fullUrl = "$cleanBase/agents/$deviceId/snapshot"
 
+            val mediaType = "image/jpeg".toMediaTypeOrNull() ?: return false
+
+            val fileBytes = file.readBytes()
             val requestBody = MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart(
                     "file",
                     file.name,
-                    file.toRequestBody("image/jpeg".toMediaTypeOrNull())
+                    RequestBody.create(mediaType, fileBytes)
                 )
                 .build()
 
@@ -149,7 +152,7 @@ class HubClient {
             val cleanPath = path.trimStart('/')
             val fullUrl = "$cleanBase/$cleanPath"
 
-            val body = jsonBody.toRequestBody(JSON_MEDIA_TYPE)
+            val body = RequestBody.create(JSON_MEDIA_TYPE, jsonBody.toByteArray())
             val request = Request.Builder()
                 .url(fullUrl)
                 .post(body)

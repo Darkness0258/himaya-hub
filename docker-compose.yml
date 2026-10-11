@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # Himaya Hub - FastAPI backend with SQLite/PostgreSQL
+  himaya-hub:
+    build:
+      context: ./hub
+      dockerfile: Dockerfile
+    container_name: himaya-hub
+    ports:
+      - "8000:8000"      # HTTP API + Dashboard
+      - "5355:5353/udp"  # DNS Sinkhole (internal 5353 -> external 5355 to avoid Chrome mDNS conflict)
+      - "5354:5354/udp"  # LAN Auto-Discovery
+    environment:
+      - PORT=8000
+      - HIMAYA_PUBLIC_URL=${HIMAYA_PUBLIC_URL:-http://localhost:8000}
+      - DATABASE_URL=${DATABASE_URL}
+      - RENDER=false
+    volumes:
+      - ./hub/data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # AdGuard Home - Network-wide DNS filtering with DoH/DoT
+  adguard:
+    image: adguard/adguardhome:latest
+    container_name: himaya-adguard
+    ports:
+      - "53:53/tcp"       # DNS
+      - "53:53/udp"       # DNS
+      - "67:67/udp"       # DHCP (optional)
+      - "68:68/tcp"       # DHCP (optional)
+      - "68:68/udp"       # DHCP (optional)
+      - "443:443/tcp"     # HTTPS/DoH
+      - "443:443/udp"     # DoH/HTTP3
+      - "853:853/tcp"     # DoT
+      - "3000:3000/tcp"   # Admin UI
+      - "8080:80/tcp"     # HTTP (redirects to HTTPS)
+      - "8853:8853/udp"   # DoQ
+      - "5443:5443/tcp"   # DNSCrypt
+    volumes:
+      - ./adguard/work:/opt/adguardhome/work
+      - ./adguard/conf:/opt/adguardhome/conf
+    restart: unless-stopped
+    environment:
+      - TZ=UTC
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # Optional: Watchtower for auto-updates
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: himaya-watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=86400
+    restart: unless-stopped
+    profiles:
+      - tools
+
+networks:
+  default:
+    name: himaya-network

@@ -37,3 +37,16 @@ dashboard_*.png
 enrollment_*.png
 policies_*.png
 screen_*.png
+
+# Android / Gradle build artifacts
+himaya-mobile/.gradle/
+himaya-mobile/app/build/
+himaya-mobile/build/
+himaya-mobile/local.properties
+himaya-mobile/gradle/wrapper/gradle-wrapper.jar
+*.apk
+*.aab
+
+# Node modules
+node_modules/
+dashboard/node_modules/

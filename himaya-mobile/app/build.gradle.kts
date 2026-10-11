@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId = "com.himaya.agent"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -37,17 +37,17 @@ android {
 
 dependencies {
     // Kotlin stdlib
-    implementation("org.jetbrains.kotlin:kotlin-stdlib")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:2.0.20")
     // OkHttp for HTTP client
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     // Lifecycle awareness
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.0")
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.8.0")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
     // Coroutines for async work
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     // Coil for image loading
-    implementation("com.squareup.coil:coil:2.6.0")
+    implementation("io.coil-kt:coil:2.4.0")
     // AndroidX Core & AppCompat
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")

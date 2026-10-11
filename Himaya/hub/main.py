@@ -12,7 +12,7 @@ import shutil
 import uuid
 import secrets
 import urllib.parse
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -96,8 +96,15 @@ def _sanitize_url_for_log(url: str) -> str:
         return "invalid-url"
 
 
+_PUBLIC_URL_DNS_CACHE: Dict[str, Tuple[bool, float]] = {}  # url -> (is_safe, expires_at)
+
+
 def _validate_public_url(url: str) -> bool:
-    """Validate public URL to prevent SSRF: must be http/https, not loopback/private."""
+    """Validate public URL to prevent SSRF: must be http/https, hostname must resolve to public IPs only.
+
+    Performs DNS resolution (with caching) and verifies ALL resolved A/AAAA records are public.
+    Rejects loopback, link-local, private (RFC1918), multicast, and reserved ranges.
+    """
     try:
         p = urllib.parse.urlparse(url)
         if p.scheme not in ("http", "https"):
@@ -105,17 +112,42 @@ def _validate_public_url(url: str) -> bool:
         hostname = p.hostname or ""
         if not hostname:
             return False
-        # Reject loopback, link-local, private RFC1918
+
+        # Check cache first (5 min TTL)
+        import time
+        now = time.time()
+        cached = _PUBLIC_URL_DNS_CACHE.get(hostname)
+        if cached and cached[1] > now:
+            return cached[0]
+
+        # Resolve hostname to all IPs
+        import socket
         import ipaddress
+
         try:
-            ip = ipaddress.ip_address(hostname)
-            if ip.is_loopback or ip.is_link_local or ip.is_private:
-                return False
-        except ValueError:
-            # Hostname, not IP - check for common private patterns
-            if hostname in ("localhost", "localhost.localdomain"):
-                return False
-        return True
+            # Get both IPv4 and IPv6
+            addrinfos = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
+        except socket.gaierror:
+            _PUBLIC_URL_DNS_CACHE[hostname] = (False, now + 300)
+            return False
+
+        all_public = True
+        for af, socktype, proto, canonname, sockaddr in addrinfos:
+            ip_str = sockaddr[0]
+            try:
+                ip = ipaddress.ip_address(ip_str)
+                if (ip.is_loopback or ip.is_link_local or ip.is_private
+                    or ip.is_multicast or ip.is_reserved or ip.is_unspecified):
+                    all_public = False
+                    break
+            except ValueError:
+                all_public = False
+                break
+
+        # Cache result for 5 minutes
+        _PUBLIC_URL_DNS_CACHE[hostname] = (all_public, now + 300)
+        return all_public
+
     except Exception:
         return False
 
@@ -262,8 +294,10 @@ async def lifespan(app: FastAPI):
     # Generate default parent API key if none exists (for initial setup)
     if not any(v.get("role") == "parent" for v in API_KEYS.values()):
         parent_key = generate_api_key("parent")
-        logger.info(f"Generated default parent API key: {parent_key}")
-        logger.info("Save this key! It won't be shown again.")
+        # Only log truncated prefix (first 8 chars) - never log full secret
+        logger.info(f"Generated default parent API key: {parent_key[:8]}... (truncated)")
+        logger.info("Full key printed to stdout once - save it securely!")
+        print(f"HIMAYA_PARENT_API_KEY={parent_key}")
 
     # Start DNS sinkhole proxy on port 5353
     try:

@@ -1,6 +1,6 @@
 # Session state (auto-saved — last known reality)
 
-_Updated: 2026-10-11 12:34:37_  ·  branch: `master`
+_Updated: 2026-10-11 12:58:21_  ·  branch: `master`
 
 ## Uncommitted changes
 ```
@@ -9,12 +9,13 @@ _Updated: 2026-10-11 12:34:37_  ·  branch: `master`
 
 Diff stat:
 ```
- .anchor/session-state.md | 47 ++---------------------------------------------
- 1 file changed, 2 insertions(+), 45 deletions(-)
+ .anchor/session-state.md | 21 +--------------------
+ 1 file changed, 1 insertion(+), 20 deletions(-)
 ```
 
 ## Recent commits
 ```
+43a0742 security: fix command injection, auth, CSRF, SSRF, path traversal, weak crypto, logging
 1cedf56 Merge remote main: combined .gitignore
 cba3045 feat: security fixes + dashboard build
 16c3bc7 feat: Add dashboard React components for control center
@@ -22,7 +23,6 @@ cba3045 feat: security fixes + dashboard build
 866eb71 feat: Complete Himaya platform with dashboard cockpit and all components validated
 78337e4 Fix Render cloud enrollment URL routing and eliminate internal container IP leaks
 828b584 feat: auto-load local .env and dynamically connect to Supabase PostgreSQL
-b483474 feat: upgrade dashboard UI with dark cockpit theme, device removal, instant snapshots, and rules presets
 ```
 
 ## Resume

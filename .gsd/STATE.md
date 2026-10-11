@@ -1,42 +1,33 @@
 ---
-updated: 2026-10-08T02:11:00Z
+updated: 2026-10-11T23:14:00Z
 ---
 
 # Project State — Himaya
 
 ## Current Position
 
-**Milestone:** Himaya v1.0 Production
-**Phase:** Complete Real-Life System Operational
-**Status:** verified
-**Plan:** Production Hub, Windows Agent, Android Agent, DNS Engine, and Parent Dashboard verified
+**Milestone:** Himaya v1.0 Cloud & Production Release
+**Phase:** Phase 6: Cloud Deployment & Security Hardening
+**Status:** verified & deployed
+**Plan:** Live Cloud Hub on Render.com (`https://himaya-hub.onrender.com`), Supabase DB support, and multi-device agents verified
 
 ## Last Action
 
-- Replaced ephemeral in-memory storage with persistent SQLite database (`Himaya/hub/database.py` and `himaya.db`), preserving devices, events, commands, rules, and snapshots across server restarts.
-- Implemented real RFC 1035 UDP DNS Sinkhole & Proxy server (`Himaya/hub/dns_server.py`) filtering blacklisted domains (TikTok, adult, gambling, custom rules) and logging blocks into database and live stream.
-- Replaced deprecated FastAPI `on_event` with modern `lifespan` context manager, and implemented 45-second heartbeat watchdog task.
-- Created complete Windows Safety Agent (`Himaya/agent-windows/himaya_windows_agent.py` & `run_agent.bat`) with native `user32.LockWorkStation()` lock, desktop snapshots via `PIL.ImageGrab`, Windows toast alerts, and VPN adapter evasion detector.
-- Upgraded Parent Web Dashboard (`Himaya/hub/static/index.html`) with multi-view tabs:
-  1. Fleet Safety Cockpit with live metrics & quick actions
-  2. Scheduled Screen Timeline with image lightbox zoom
-  3. Content Filter & Curfew Schedule manager (bedtime hours, category toggles)
-- Created 1-click startup scripts:
-  - `Himaya/hub/start_hub.bat`
-  - `Himaya/agent-windows/run_agent.bat`
-  - `Himaya/himaya-mobile/enroll-device-owner.bat`
-- All test suites passing:
-  - `test_phase1.py` PASSED
-  - `test_hub_full.py` PASSED
-  - `test_phase4_e2e.py` PASSED
-  - `test_production_hub.py` PASSED
+- Deployed production Docker web service to Render.com (`https://himaya-hub.onrender.com`) with health check, dynamic port resolution, and live cloud telemetry.
+- Integrated dual-mode database support: persistent Supabase PostgreSQL via `DATABASE_URL` with transaction pooling, falling back to local SQLite with WAL mode.
+- Deployed React 19 + TypeScript SPA parent dashboard cockpit (`/dashboard`) directly served by FastAPI hub with real-time WebSockets (`/ws`), dark theme, and remote controls.
+- Hardened Hub security with API key authentication, SSRF protection on public URL resolution, directory traversal prevention for snapshots, and timing-safe token verification.
+- Upgraded Android mobile agent to Gradle 8.7, Android Gradle Plugin 8.5, and Kotlin 2.0.20 with `MediaProjection` screen sharing and `VpnAgent` DNS enforcement.
+- Automated zero-touch auto-enrollment for both Internet (`https://himaya-hub.onrender.com/enroll/win`) and LAN targets with 6-digit Quick PIN pairing and QR code generation.
+- All test suites passing (`test_phase1.py`, `test_hub_full.py`, `test_phase4_e2e.py`, `test_production_hub.py`, `test_internet_auto_enroll.py`).
 
 ## Active Decisions
 
 | Decision | Choice | Made | Affects |
 |---|---|---|---|
-| Database Engine | SQLite 3 with threadsafe connection pool and WAL mode | 2026-10-08 | Zero-dependency local persistence |
-| DNS Architecture | Built-in UDP DNS proxy on 5353 with Cloudflare upstream | 2026-10-08 | Native family sinkhole |
+| Cloud Hosting | Render.com Web Service via Docker | 2026-10-11 | 24/7 online availability with HTTPS |
+| Cloud Database | Supabase PostgreSQL via DATABASE_URL (SQLite local fallback) | 2026-10-11 | Global persistence & multi-instance scaling |
+| Web Dashboard | React 19 + Vite compiled and served statically by FastAPI | 2026-10-11 | Unified single-port deployment on Render |
 | Windows Lock | `ctypes.windll.user32.LockWorkStation()` | 2026-10-08 | Native non-destructive screen lock |
 | Windows Capture | `PIL.ImageGrab.grab()` with JPEG compression | 2026-10-08 | Scheduled snapshots |
 | Android Enrollment | ADB Device Owner mode (`dpm set-device-owner`) | 2026-10-08 | Unbreakable MDM compliance |

@@ -60,38 +60,39 @@ updated: 2026-10-08T01:48:00Z
 ---
 
 ### Phase 4: Remote Actions Execution Pipeline
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 **Objective:** Establish bidirectional command delivery from Dashboard -> Hub -> Agent, allowing real-time execution of device lock, internet pause, notification push, and remote wipe.
 **Depends on:** Phase 2, Phase 3
 
 **Plans:**
 - [x] Plan 4.1: Implement Hub agent command polling / queue channel (`/agents/{id}/commands`)
 - [x] Plan 4.2: Implement Android Agent command receiver and native action execution handlers
-- [ ] Plan 4.3: End-to-end integration testing of Lock, Unlock, Pause Internet, and Push Alert commands
+- [x] Plan 4.3: End-to-end integration testing of Lock, Unlock, Pause Internet, and Push Alert commands (`test_phase4_e2e.py`)
 
 ---
 
 ### Phase 5: Snapshot Loop & Timeline UI
-**Status:** ⬜ Not Started
-**Objective:** Implement periodic scheduled screen capture on Android via `MediaProjection` and display snapshot gallery on Dashboard.
+**Status:** ✅ Complete
+**Objective:** Implement periodic scheduled screen capture on Android via `MediaProjection` and Windows via `PIL.ImageGrab`, with encrypted upload and snapshot gallery on Dashboard.
 **Depends on:** Phase 4
 
 **Plans:**
-- [ ] Plan 5.1: Hub endpoint for encrypted/authenticated snapshot upload and retrieval (`/agents/{id}/snapshot`)
-- [ ] Plan 5.2: Android MediaProjection capture service with user consent and status notification
-- [ ] Plan 5.3: Dashboard Snapshot Timeline viewer with timestamp inspection
+- [x] Plan 5.1: Hub endpoint for encrypted/authenticated snapshot upload and retrieval (`/agents/{id}/snapshot`)
+- [x] Plan 5.2: Android MediaProjection capture service & Windows PIL snapshot loop
+- [x] Plan 5.3: Dashboard Snapshot Timeline viewer with image modal inspection (`/snapshots`)
 
 ---
 
-### Phase 6: DNS Sinkhole Integration & Hardening
-**Status:** ⬜ Not Started
-**Objective:** Connect AdGuard Home Docker engine to Hub, route Android DNS through VpnService, and test VPN circumvent block.
+### Phase 6: Cloud Deployment, DNS Sinkhole & Security Hardening
+**Status:** ✅ Complete
+**Objective:** Connect Cloud hosting (Render.com Docker Service + Supabase PostgreSQL), built-in RFC 1035 UDP DNS sinkhole, zero-touch internet auto-enrollment, and production security hardening.
 **Depends on:** Phase 5
 
 **Plans:**
-- [ ] Plan 6.1: Docker compose configuration and Hub DNS block webhook ingestion
-- [ ] Plan 6.2: Validate Android VPN-guard loop alerts on unauthorized tunnel changes
-- [ ] Plan 6.3: Comprehensive audit and end-to-end verification
+- [x] Plan 6.1: Docker & Render deployment (`render.yaml`, `hub/Dockerfile`) with dynamic port and health check
+- [x] Plan 6.2: Dual database persistence (Supabase PostgreSQL via `DATABASE_URL` with SQLite WAL fallback)
+- [x] Plan 6.3: Production security hardening (API key auth, SSRF protection, path traversal defenses)
+- [x] Plan 6.4: Zero-touch Internet & LAN auto-enrollment (`/enroll/info`, `/enroll/win`, `/enroll/mobile`)
 
 ---
 
@@ -102,10 +103,10 @@ updated: 2026-10-08T01:48:00Z
 | 1: Hub Skeleton & Event Feed | ✅ Complete | 2/2 | 100% |
 | 2: Parent Web Dashboard | ✅ Complete | 4/4 | 100% |
 | 3: Android Agent Core & Loops | ✅ Complete | 4/4 | 100% |
-| 4: Remote Actions Pipeline | 🔄 In Progress | 2/3 | 66% |
-| 5: Snapshot Loop & UI | ⬜ Not Started | 0/3 | 0% |
-| 6: DNS Sinkhole & Hardening | ⬜ Not Started | 0/3 | 0% |
+| 4: Remote Actions Pipeline | ✅ Complete | 3/3 | 100% |
+| 5: Snapshot Loop & UI | ✅ Complete | 3/3 | 100% |
+| 6: Cloud & Security Hardening | ✅ Complete | 4/4 | 100% |
 
 ---
 
-*Last updated: 2026-10-08*
+*Last updated: 2026-10-11*

@@ -289,6 +289,12 @@ def init_db() -> None:
                 CREATE INDEX IF NOT EXISTS idx_cmds_dev ON commands(device_id, status);
             """)
             conn.commit()
+        # Set restrictive file permissions on SQLite database (0o600 = owner read/write only)
+        if not conn.is_pg and DB_PATH.exists():
+            try:
+                os.chmod(DB_PATH, 0o600)
+            except Exception:
+                pass
     except Exception as e:
         print(f"[Database Error] Table initialization encountered error: {e}")
 

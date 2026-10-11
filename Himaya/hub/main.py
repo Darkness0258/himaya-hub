@@ -10,6 +10,8 @@ import os
 from pathlib import Path
 import shutil
 import uuid
+import secrets
+import urllib.parse
 from typing import Dict, List, Optional
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
@@ -85,9 +87,42 @@ async def heartbeat_watchdog():
             await asyncio.sleep(5)
 
 
+def _sanitize_url_for_log(url: str) -> str:
+    """Sanitize URL for logging: keep only scheme, host, path."""
+    try:
+        p = urllib.parse.urlparse(url)
+        return f"{p.scheme}://{p.hostname}{p.path}"
+    except Exception:
+        return "invalid-url"
+
+
+def _validate_public_url(url: str) -> bool:
+    """Validate public URL to prevent SSRF: must be http/https, not loopback/private."""
+    try:
+        p = urllib.parse.urlparse(url)
+        if p.scheme not in ("http", "https"):
+            return False
+        hostname = p.hostname or ""
+        if not hostname:
+            return False
+        # Reject loopback, link-local, private RFC1918
+        import ipaddress
+        try:
+            ip = ipaddress.ip_address(hostname)
+            if ip.is_loopback or ip.is_link_local or ip.is_private:
+                return False
+        except ValueError:
+            # Hostname, not IP - check for common private patterns
+            if hostname in ("localhost", "localhost.localdomain"):
+                return False
+        return True
+    except Exception:
+        return False
+
+
 async def keep_alive_ping():
     """Self-ping /health every 9 minutes to prevent Render free-tier sleep.
-    
+
     Render spins down free-tier services after ~15 min of inactivity.
     This background task ensures the service stays warm by pinging its public URL.
     """
@@ -105,7 +140,7 @@ async def keep_alive_ping():
             if not own_url and (os.environ.get("RENDER") or os.environ.get("PORT")):
                 own_url = "https://himaya-hub.onrender.com"
 
-            if own_url:
+            if own_url and _validate_public_url(own_url):
                 health_url = f"{own_url.rstrip('/')}/health"
 
                 def _do_ping() -> str:
@@ -114,11 +149,14 @@ async def keep_alive_ping():
                         health_url,
                         headers={"User-Agent": "Himaya-KeepAlive-Watchdog/1.0"}
                     )
-                    with urllib.request.urlopen(req, timeout=15) as resp:
+                    # Prevent redirects to internal URLs
+                    opener = urllib.request.build_opener()
+                    opener.addheaders = [("User-Agent", "Himaya-KeepAlive-Watchdog/1.0")]
+                    with opener.open(req, timeout=15) as resp:
                         return f"HTTP {resp.status}"
 
                 res_msg = await asyncio.to_thread(_do_ping)
-                logger.info(f"[Keep-Alive] Ping {health_url} -> {res_msg}")
+                logger.info(f"[Keep-Alive] Ping {_sanitize_url_for_log(health_url)} -> {res_msg}")
             else:
                 logger.debug("[Keep-Alive] Running locally without external URL; self-ping skipped.")
 
@@ -158,12 +196,74 @@ def handle_dns_block_telemetry(client_ip: str, domain: str):
     ))
 
 
+# API Key store (in production, use Redis or database)
+# Format: { "api_key_hash": { "role": "parent|agent", "device_id": "..." } }
+API_KEYS: Dict[str, Dict[str, str]] = {}
+
+
+def _hash_key(key: str) -> str:
+    import hashlib
+    return hashlib.sha256(key.encode()).hexdigest()
+
+
+def generate_api_key(role: str, device_id: Optional[str] = None) -> str:
+    """Generate a new API key for a parent or agent."""
+    raw = secrets.token_urlsafe(32)
+    key_hash = _hash_key(raw)
+    API_KEYS[key_hash] = {"role": role, "device_id": device_id or ""}
+    return raw
+
+
+def verify_api_key(api_key: str) -> Optional[Dict[str, str]]:
+    """Verify API key and return its metadata."""
+    key_hash = _hash_key(api_key)
+    return API_KEYS.get(key_hash)
+
+
+from fastapi import Depends, Header
+from fastapi.security import APIKeyHeader
+
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+async def get_current_identity(api_key: str = Depends(api_key_header)) -> Dict[str, str]:
+    """Dependency that validates API key and returns identity."""
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Missing X-API-Key header")
+    identity = verify_api_key(api_key)
+    if not identity:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    return identity
+
+
+def require_parent(identity: Dict[str, str] = Depends(get_current_identity)) -> Dict[str, str]:
+    """Require parent role."""
+    if identity.get("role") != "parent":
+        raise HTTPException(status_code=403, detail="Parent role required")
+    return identity
+
+
+def require_agent_or_parent(identity: Dict[str, str] = Depends(get_current_identity), device_id: Optional[str] = None) -> Dict[str, str]:
+    """Allow agent acting on its own device, or parent for any device."""
+    if identity.get("role") == "parent":
+        return identity
+    if identity.get("role") == "agent" and identity.get("device_id") == device_id:
+        return identity
+    raise HTTPException(status_code=403, detail="Not authorized for this device")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global main_loop, dns_server, discovery_server, watchdog_task, keepalive_task
     # Startup
     main_loop = asyncio.get_running_loop()
     database.init_db()
+
+    # Generate default parent API key if none exists (for initial setup)
+    if not any(v.get("role") == "parent" for v in API_KEYS.values()):
+        parent_key = generate_api_key("parent")
+        logger.info(f"Generated default parent API key: {parent_key}")
+        logger.info("Save this key! It won't be shown again.")
 
     # Start DNS sinkhole proxy on port 5353
     try:
@@ -273,11 +373,14 @@ class SetPublicUrlRequest(BaseModel):
 
 
 @app.post("/enroll/public-url")
-async def set_public_hub_url(body: SetPublicUrlRequest):
+async def set_public_hub_url(body: SetPublicUrlRequest, identity: Dict[str, str] = Depends(require_parent)):
     """Save a custom Internet Hub URL (e.g. Public IP, DuckDNS, or Cloudflare Tunnel)."""
     cleaned = body.public_url.strip().rstrip("/")
     if cleaned and not (cleaned.startswith("http://") or cleaned.startswith("https://")):
         cleaned = f"http://{cleaned}"
+    # Validate URL to prevent SSRF
+    if not _validate_public_url(cleaned):
+        raise HTTPException(status_code=400, detail="Invalid URL")
     database.set_setting("public_hub_url", cleaned)
     return {"status": "ok", "public_url": cleaned}
 
@@ -381,6 +484,11 @@ async def get_enrollment_qr(request: Request, target: Optional[str] = "auto", hu
     return Response(content=buf.getvalue(), media_type="image/png")
 
 
+def _escape_powershell(s: str) -> str:
+    """Escape string for safe PowerShell double-quoted string interpolation."""
+    return s.replace('"', '`"').replace('$', '`$').replace('`', '``')
+
+
 @app.get("/enroll/win")
 async def get_windows_installer_script(request: Request, target: Optional[str] = "auto", hub_url: Optional[str] = None):
     """Serves the 1-click PowerShell installer script for any Windows PC over Internet or LAN."""
@@ -406,15 +514,20 @@ async def get_windows_installer_script(request: Request, target: Optional[str] =
     else:
         primary_hub = request_base_url
 
+    # Escape all user-controlled values for PowerShell
+    primary_hub_esc = _escape_powershell(primary_hub)
+    lan_hub_url_esc = _escape_powershell(lan_hub_url)
+    internet_hub_url_esc = _escape_powershell(internet_hub_url)
+
     script = f'''# Himaya Automatic Windows Agent Installer (Internet & LAN Multi-Homed)
 $ErrorActionPreference = "Stop"
 Write-Host "========================================================" -ForegroundColor Cyan
 Write-Host "   HIMAYA FAMILY SAFETY - REAL DEVICE AUTO-ENROLLMENT" -ForegroundColor Cyan
 Write-Host "========================================================" -ForegroundColor Cyan
 
-$primaryUrl   = "{primary_hub}"
-$lanUrl       = "{lan_hub_url}"
-$internetUrl  = "{internet_hub_url}"
+$primaryUrl   = "{primary_hub_esc}"
+$lanUrl       = "{lan_hub_url_esc}"
+$internetUrl  = "{internet_hub_url_esc}"
 $candidateUrls = @($primaryUrl, $internetUrl, $lanUrl, "http://127.0.0.1:8000") | Select-Object -Unique
 
 $computerName = $env:COMPUTERNAME
@@ -723,13 +836,14 @@ class PairRequest(BaseModel):
 
 @app.post("/enroll/pair")
 async def pair_device(body: PairRequest):
-    """Enrolls a real device using the 6-digit Quick PIN."""
+    """Enrolls a real device using the 6-digit Quick PIN. Unauthenticated but PIN-protected."""
     expected_pin = get_enrollment_pin()
     if body.pin != expected_pin:
         raise HTTPException(status_code=400, detail="Invalid enrollment PIN")
 
     # Always generate server-side device_id; reject client-provided to prevent IDOR
-    device_id = f"{body.platform}-{uuid.uuid4().hex[:6]}"
+    # Use secrets.token_hex(8) for 128-bit entropy instead of truncated UUID
+    device_id = f"{body.platform}-{secrets.token_hex(8)}"
     dev = database.insert_device(
         device_id=device_id,
         name=body.name,
@@ -752,7 +866,7 @@ async def pair_device(body: PairRequest):
 
 # --- Device Registry ---
 @app.post("/devices")
-async def register_device(body: DeviceCreate):
+async def register_device(body: DeviceCreate, identity: Dict[str, str] = Depends(require_agent_or_parent)):
     existing = database.get_device(body.device_id)
     if existing:
         database.update_device_status(body.device_id, status=existing.get("status", "online"), ip=body.ip or existing.get("ip"))
@@ -769,12 +883,12 @@ async def register_device(body: DeviceCreate):
 
 
 @app.get("/devices")
-async def list_devices():
+async def list_devices(identity: Dict[str, str] = Depends(require_parent)):
     return database.list_devices()
 
 
 @app.get("/devices/{device_id}")
-async def get_device(device_id: str):
+async def get_device(device_id: str, identity: Dict[str, str] = Depends(require_agent_or_parent)):
     dev = database.get_device(device_id)
     if not dev:
         raise HTTPException(status_code=404, detail=f"Device {device_id} not found")
@@ -782,13 +896,13 @@ async def get_device(device_id: str):
 
 
 @app.delete("/devices/{device_id}")
-async def delete_device(device_id: str):
+async def delete_device(device_id: str, identity: Dict[str, str] = Depends(require_parent)):
     dev = database.get_device(device_id)
     if not dev:
         raise HTTPException(status_code=404, detail=f"Device {device_id} not found")
     database.delete_device(device_id)
     # Clean up any disk snapshots associated with this device
-    dev_snap_dir = SNAPSHOTS_DIR / device_id
+    dev_snap_dir = _safe_join(SNAPSHOTS_DIR, device_id)
     if dev_snap_dir.exists():
         try:
             shutil.rmtree(dev_snap_dir, ignore_errors=True)
@@ -804,7 +918,7 @@ async def delete_device(device_id: str):
 
 
 @app.get("/events")
-async def get_events(limit: int = 50):
+async def get_events(limit: int = 50, identity: Dict[str, str] = Depends(require_parent)):
     return database.list_events(limit=limit)
 
 
@@ -919,12 +1033,24 @@ async def policy_sync(device_id: str, rules: Optional[dict] = None):
 
 
 # --- Snapshot Storage & Inspection ---
+def _safe_join(base: Path, *parts: str) -> Path:
+    """Safely join path parts, preventing path traversal."""
+    target = (base / Path(*parts)).resolve()
+    if not target.is_relative_to(base.resolve()):
+        raise HTTPException(status_code=400, detail="Invalid path")
+    return target
+
+
 @app.post("/agents/{device_id}/snapshot")
 async def upload_snapshot(device_id: str, file: UploadFile = File(...)):
-    dev_dir = SNAPSHOTS_DIR / device_id
+    # Validate device_id format
+    if not device_id or not all(c.isalnum() or c in "-_" for c in device_id):
+        raise HTTPException(status_code=400, detail="Invalid device_id")
+    dev_dir = _safe_join(SNAPSHOTS_DIR, device_id)
     dev_dir.mkdir(parents=True, exist_ok=True)
 
-    filename = f"{int(datetime.now(timezone.utc).timestamp())}_{uuid.uuid4().hex[:6]}.jpg"
+    # Use secrets.token_hex(8) for unguessable filename
+    filename = f"{int(datetime.now(timezone.utc).timestamp())}_{secrets.token_hex(8)}.jpg"
     dest_path = dev_dir / filename
 
     with open(dest_path, "wb") as buffer:
@@ -951,7 +1077,10 @@ async def get_all_snapshots(device_id: Optional[str] = None):
 
 @app.get("/snapshots/{device_id}/{filename}")
 async def serve_snapshot_image(device_id: str, filename: str):
-    file_path = SNAPSHOTS_DIR / device_id / filename
+    # Validate device_id and filename to prevent path traversal
+    if not all(c.isalnum() or c in "-_." for c in filename):
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    file_path = _safe_join(SNAPSHOTS_DIR, device_id, filename)
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Snapshot not found")
     return FileResponse(file_path, media_type="image/jpeg")
@@ -959,12 +1088,12 @@ async def serve_snapshot_image(device_id: str, filename: str):
 
 # --- Parent Rules & Curfews ---
 @app.get("/rules/{device_id}")
-async def fetch_rules(device_id: str):
+async def fetch_rules(device_id: str, identity: Dict[str, str] = Depends(require_agent_or_parent)):
     return database.get_device_rules(device_id)
 
 
 @app.post("/rules/{device_id}")
-async def update_rules(device_id: str, rules: dict):
+async def update_rules(device_id: str, rules: dict, identity: Dict[str, str] = Depends(require_parent)):
     database.save_device_rules(device_id, rules)
     database.queue_command(device_id, "policy_sync", rules)
     emit(Event(
@@ -983,7 +1112,7 @@ class ActionRequest(BaseModel):
 
 
 @app.post("/admin/{device_id}/action")
-async def remote_action(device_id: str, body: ActionRequest):
+async def remote_action(device_id: str, body: ActionRequest, identity: Dict[str, str] = Depends(require_parent)):
     dev = database.get_device(device_id)
     if not dev:
         raise HTTPException(status_code=404, detail=f"Device {device_id} not found")

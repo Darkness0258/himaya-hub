@@ -6,7 +6,7 @@
 """
 from __future__ import annotations
 import json
-import random
+import secrets
 import socket
 import threading
 import time
@@ -61,7 +61,8 @@ def get_enrollment_pin() -> str:
 
 def regenerate_enrollment_pin() -> str:
     global _active_pin
-    _active_pin = f"{random.randint(100000, 999999)}"
+    # Use secrets for cryptographically secure PIN generation
+    _active_pin = f"{secrets.randbelow(900000) + 100000:06d}"
     return _active_pin
 
 

@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Himaya Agent</string>
+    <string name="active_status">Himaya Active</string>
+    <string name="hub_url">Hub URL</string>
+    <string name="device_id">Device ID</string>
+    <string name="owner_type">Owner Type</string>
+    <string name="child">Child</string>
+    <string name="adult">Adult</string>
+    <string name="enable_agent">Enable Agent</string>
+    <string name="agent_running">Agent is running</string>
+    <string name="agent_paused">Agent is paused</string>
+</resources>

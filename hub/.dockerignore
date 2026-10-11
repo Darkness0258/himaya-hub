@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*.db
+*.db-journal
+data/snapshots/*
+!data/snapshots/.gitkeep
+.claude-flow/
+*.log
+*.tmp
+test_*.py
+.env
+.venv

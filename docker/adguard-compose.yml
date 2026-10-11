@@ -1,0 +1,14 @@
+version: '3'
+services:
+  adguard:
+    image: adguard/adguardhome:latest
+    container_name: himaya-adguard
+    restart: unless-stopped
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "80:80/tcp"
+      - "443:443/tcp"
+    volumes:
+      - ./adguard/work:/opt/adguardhome/work
+      - ./adguard/conf:/opt/adguardhome/conf

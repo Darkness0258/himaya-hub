@@ -41,7 +41,21 @@ yarn-error.log*
 dist/
 .cache/
 
-# OS / IDE
+# Local databases & testing data
+hub/himaya.db
+hub/himaya.db-journal
+hub/data/snapshots/*
+!hub/data/snapshots/.gitkeep
+
+# Logs & temp files
+*.log
+*.tmp
+
+# Local testing artifacts
+.playwright-mcp/
+agent_config.json
+
+# OS files
 .DS_Store
 Thumbs.db
 *.swp
@@ -49,3 +63,16 @@ Thumbs.db
 .idea/
 *.iml
 .vscode/
+
+# Claude Flow state (internal agent tool)
+.claude-flow/
+hub/.claude-flow/
+
+# Screenshots from testing (not assets)
+dashboard_*.png
+enrollment_*.png
+policies_*.png
+screen_*.png
+
+# Environment files
+.env

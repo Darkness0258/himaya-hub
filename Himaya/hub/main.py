@@ -12,7 +12,7 @@ import shutil
 import uuid
 import secrets
 import urllib.parse
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -96,14 +96,12 @@ def _sanitize_url_for_log(url: str) -> str:
         return "invalid-url"
 
 
-_PUBLIC_URL_DNS_CACHE: Dict[str, Tuple[bool, float]] = {}  # url -> (is_safe, expires_at)
-
-
 def _validate_public_url(url: str) -> bool:
     """Validate public URL to prevent SSRF: must be http/https, hostname must resolve to public IPs only.
 
-    Performs DNS resolution (with caching) and verifies ALL resolved A/AAAA records are public.
+    Performs DNS resolution and verifies ALL resolved A/AAAA records are public.
     Rejects loopback, link-local, private (RFC1918), multicast, and reserved ranges.
+    Called at ping time (every 9 min) - no caching needed.
     """
     try:
         p = urllib.parse.urlparse(url)
@@ -113,41 +111,26 @@ def _validate_public_url(url: str) -> bool:
         if not hostname:
             return False
 
-        # Check cache first (5 min TTL)
-        import time
-        now = time.time()
-        cached = _PUBLIC_URL_DNS_CACHE.get(hostname)
-        if cached and cached[1] > now:
-            return cached[0]
-
-        # Resolve hostname to all IPs
+        # Resolve hostname to all IPs at validation time
         import socket
         import ipaddress
 
         try:
-            # Get both IPv4 and IPv6
             addrinfos = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
         except socket.gaierror:
-            _PUBLIC_URL_DNS_CACHE[hostname] = (False, now + 300)
             return False
 
-        all_public = True
         for af, socktype, proto, canonname, sockaddr in addrinfos:
             ip_str = sockaddr[0]
             try:
                 ip = ipaddress.ip_address(ip_str)
                 if (ip.is_loopback or ip.is_link_local or ip.is_private
                     or ip.is_multicast or ip.is_reserved or ip.is_unspecified):
-                    all_public = False
-                    break
+                    return False
             except ValueError:
-                all_public = False
-                break
+                return False
 
-        # Cache result for 5 minutes
-        _PUBLIC_URL_DNS_CACHE[hostname] = (all_public, now + 300)
-        return all_public
-
+        return True
     except Exception:
         return False
 

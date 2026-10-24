@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher icon foreground: the khatam star, kept inside the 66dp safe zone of the 108dp adaptive canvas. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#E8C277"
+        android:pathData="M54.00,26.00 L59.63,40.42 L73.80,34.20 L67.58,48.37 L82.00,54.00 L67.58,59.63 L73.80,73.80 L59.63,67.58 L54.00,82.00 L48.37,67.58 L34.20,73.80 L40.42,59.63 L26.00,54.00 L40.42,48.37 L34.20,34.20 L48.37,40.42 Z" />
+    <path
+        android:fillColor="#16225C"
+        android:pathData="M48.20,54.00 a5.80,5.80 0 1,0 11.60,0 a5.80,5.80 0 1,0 -11.60,0 Z" />
+</vector>

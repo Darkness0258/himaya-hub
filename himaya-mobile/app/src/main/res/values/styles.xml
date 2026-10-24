@@ -1,9 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.HimayaAgent" parent="Theme.AppCompat.DayNight.DarkActionBar">
-        <item name="colorPrimary">#1565C0</item>
-        <item name="colorPrimaryDark">#0D47A1</item>
-        <item name="colorAccent">#FF6F00</item>
-        <item name="android:statusBarColor">#0D47A1</item>
+    <style name="Theme.HimayaAgent" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/lapis</item>
+        <item name="colorPrimaryDark">@color/lapis_dark</item>
+        <item name="colorAccent">@color/accent</item>
+        <item name="android:windowBackground">@color/page</item>
+        <item name="android:statusBarColor">@color/page</item>
+        <item name="android:navigationBarColor">@color/page</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_muted</item>
+    </style>
+
+    <style name="Himaya.SectionTitle" parent="">
+        <item name="android:textSize">18sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:layout_marginTop">24dp</item>
+        <item name="android:layout_marginBottom">8dp</item>
+    </style>
+
+    <style name="Himaya.Body" parent="">
+        <item name="android:textSize">15sp</item>
+        <item name="android:textColor">@color/text_muted</item>
+        <item name="android:lineSpacingMultiplier">1.15</item>
     </style>
 </resources>

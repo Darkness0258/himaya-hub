@@ -1,17 +1,14 @@
 package com.himaya.agent
 
 import android.app.Application
-import android.content.Intent
 
 /**
- * Application class for Himaya Agent
- * Initializes services on app start
+ * Only prepares notification channels. The first version started the service from here, which crashes on
+ * Android 8+ whenever the process is created in the background (for example by the boot receiver).
  */
 class HimayaApplication : Application() {
-
     override fun onCreate() {
         super.onCreate()
-        // Start agent service on app creation
-        startService(Intent(this, AgentService::class.java))
+        Notifications.ensureChannels(this)
     }
 }

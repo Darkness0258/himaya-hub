@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<device-admin>
+<!-- Only what Himaya actually uses: lock the screen, and erase a lost phone. (The first version listed
+     tags that are not valid policies, so "lock" would have been refused.) -->
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-policies>
-        <lock-password />
+        <force-lock />
         <wipe-data />
-        <disable-camera />
-        <disable-usb-tether />
     </uses-policies>
 </device-admin>

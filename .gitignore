@@ -1,52 +1,60 @@
-# Byte-compiled / optimized / DLL files
+# ---- Python -------------------------------------------------------------
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Virtual environments
-.env
-.venv
-env/
+.pytest_cache/
+.venv/
 venv/
-ENV/
+env/
 
-# Local databases & testing data
-hub/himaya.db
-hub/himaya.db-journal
-hub/data/snapshots/*
-!hub/data/snapshots/.gitkeep
-
-# Logs & temp files
-*.log
-*.tmp
-
-# Local testing artifacts
-.playwright-mcp/
+# ---- Secrets & local configuration (never commit) ------------------------
+.env
+hub/.env
+!.env.example
+!hub/.env.example
 agent_config.json
 
-# OS files
+# ---- Runtime data: database, screenshots, admin key ----------------------
+hub/data/
+hub/himaya.db
+hub/himaya.db-*
+*.db-wal
+*.db-shm
+*.log
+
+# ---- AdGuard Home runtime (contains sessions and the admin password hash) -
+adguard/work/
+adguard/conf/
+
+# ---- Node ----------------------------------------------------------------
+node_modules/
+dashboard/node_modules/
+dashboard/dist/
+# NOTE: hub/static/ (the built dashboard) is committed on purpose so the hub runs without Node.
+
+# ---- Android / Gradle ----------------------------------------------------
+himaya-mobile/.gradle/
+himaya-mobile/.kotlin/
+himaya-mobile/app/build/
+himaya-mobile/build/
+himaya-mobile/local.properties
+*.apk
+*.aab
+*.jks
+*.keystore
+
+# ---- OS / editor / tooling -----------------------------------------------
 .DS_Store
 Thumbs.db
-
-# Claude Flow state (internal agent tool)
+.idea/
+.vscode/
+.playwright-mcp/
 .claude-flow/
 hub/.claude-flow/
+*.tmp
 
-# Screenshots from testing (not assets)
+# ---- Test screenshots (not assets) ----------------------------------------
 dashboard_*.png
 enrollment_*.png
 policies_*.png
 screen_*.png
-
-# Android / Gradle build artifacts
-himaya-mobile/.gradle/
-himaya-mobile/app/build/
-himaya-mobile/build/
-himaya-mobile/local.properties
-himaya-mobile/gradle/wrapper/gradle-wrapper.jar
-*.apk
-*.aab
-
-# Node modules
-node_modules/
-dashboard/node_modules/

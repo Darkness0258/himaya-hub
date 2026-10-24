@@ -11,8 +11,8 @@ android {
         applicationId = "com.himaya.agent"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "2.0.0"
     }
 
     buildTypes {
@@ -38,19 +38,13 @@ android {
 dependencies {
     // Kotlin stdlib
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.0.20")
-    // OkHttp for HTTP client
+    // HTTP client (the only networking library; everything else uses the Android framework)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    // Lifecycle awareness
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
-    // Coroutines for async work
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-    // Coil for image loading
-    implementation("io.coil-kt:coil:2.4.0")
-    // AndroidX Core & AppCompat
+    // AndroidX Core & AppCompat (theme and dialogs)
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
-    // MediaProjection for screen capture
-    implementation("androidx.media:media:1.6.0")
+
+    // Unit tests (./gradlew testDebugUnitTest). org.json is needed because the Android stub throws on a plain JVM.
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }

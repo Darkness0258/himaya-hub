@@ -2,108 +2,110 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Network access for hub communication -->
+    <!-- Talk to the hub -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
-    <!-- Notifications for Android 13+ -->
+    <!-- The visible "Himaya is active" indicator and messages from the parent (Android 13+ asks the user) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- Foreground service for persistent agent -->
+    <!-- Foreground service: the persistent notification is the agent's visible indicator -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-
-    <!-- Start on boot -->
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-
-    <!-- VPN service for DNS filtering -->
-    <!-- BIND_VPN_SERVICE is declared on the service, not as a uses-permission -->
-
-    <!-- Screen capture for on-demand screen share -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 
-    <!-- Device admin for remote lock/wipe -->
-    <!-- BIND_DEVICE_ADMIN is declared on the receiver, not as a uses-permission -->
+    <!-- Start again after a restart or an update -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- Let the parent close a distracting app that is running in the background -->
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
+
+    <!-- BIND_VPN_SERVICE and BIND_DEVICE_ADMIN are declared on the service / receiver below -->
+
+    <!--
+        usesCleartextTraffic: the hub normally lives on your home network and is reached over plain HTTP
+        (http://192.168.x.x:8000). Since Android 9 the app is blocked from doing that unless this is true,
+        so the first version could not talk to a LAN hub at all. Away from home use an https:// address
+        (a cloud hub, or a reverse proxy) or WireGuard; see docs/SECURITY.md.
+    -->
     <application
-        android:name="com.himaya.agent.HimayaApplication"
+        android:name=".HimayaApplication"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.HimayaAgent">
+        android:theme="@style/Theme.HimayaAgent"
+        android:usesCleartextTraffic="true"
+        tools:targetApi="34">
 
-        <!-- Main Activity & Visible Dashboard Indicator with Deep-Link Enrollment -->
         <activity
-            android:name="com.himaya.agent.MainActivity"
+            android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Deep Link Auto-Enrollment over Internet & LAN -->
-            <intent-filter android:autoVerify="true">
+
+            <!-- himaya://enroll?hub=http://192.168.1.20:8000 : only pre-fills the address; the person must confirm it -->
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="himaya" android:host="enroll" />
             </intent-filter>
-            <intent-filter android:autoVerify="true">
+
+            <!-- Scanning the dashboard's QR code (a link to the hub's /enroll/mobile page) opens this app -->
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="http" android:host="*" android:pathPrefix="/enroll/mobile" />
-                <data android:scheme="https" android:host="*" android:pathPrefix="/enroll/mobile" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:host="*" />
+                <data android:pathPrefix="/enroll/mobile" />
             </intent-filter>
         </activity>
 
-        <!-- Main foreground service that talks to the hub -->
         <service
-            android:name="com.himaya.agent.AgentService"
-            android:foregroundServiceType="dataSync"
-            android:exported="false" />
+            android:name=".AgentService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
-        <!-- VPN service for DNS filtering -->
         <service
-            android:name="com.himaya.agent.VpnAgent"
-            android:permission="android.permission.BIND_VPN_SERVICE"
-            android:exported="true">
+            android:name=".ScreenShareService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
+
+        <service
+            android:name=".VpnAgent"
+            android:exported="true"
+            android:permission="android.permission.BIND_VPN_SERVICE">
             <intent-filter>
                 <action android:name="android.net.VpnService" />
             </intent-filter>
         </service>
 
-        <!-- Screen share service for on-demand screen capture -->
-        <service
-            android:name="com.himaya.agent.ScreenShareService"
-            android:foregroundServiceType="mediaProjection"
-            android:exported="false" />
-
-        <!-- Device admin receiver for remote actions -->
         <receiver
-            android:name="com.himaya.agent.DeviceAdminReceiver"
-            android:permission="android.permission.BIND_DEVICE_ADMIN"
-            android:exported="true">
+            android:name=".DeviceAdminReceiver"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
             <meta-data
                 android:name="android.app.device_admin"
                 android:resource="@xml/device_admin" />
             <intent-filter>
                 <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
-                <action android:name="android.app.action.DEVICE_ADMIN_DISABLED" />
             </intent-filter>
         </receiver>
 
-        <!-- Boot receiver to restart agent -->
         <receiver
-            android:name="com.himaya.agent.BootReceiver"
+            android:name=".BootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
-
     </application>
 </manifest>

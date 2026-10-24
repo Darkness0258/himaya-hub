@@ -1,0 +1,100 @@
+/* Himaya design tokens. Night lapis + gold (the khatam star), calm status colours.
+   Every colour pair used for text was checked for WCAG AA contrast (see docs/DESIGN.md). */
+:root {
+  --font-display: 'Fraunces Variable', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --font-body: 'Figtree Variable', 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Consolas, monospace;
+
+  --fs-xs: 0.8125rem;
+  --fs-sm: 0.9rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.15rem;
+  --fs-xl: 1.45rem;
+  --fs-2xl: 1.9rem;
+  --fs-hero: clamp(2.1rem, 1.2rem + 3.6vw, 3.5rem);
+
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 20px;
+  --r-pill: 999px;
+  --rail-w: 252px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  --mark-star: #e8c277;
+  --mark-core: #16225c;
+  --mark-tile: #243da8;
+}
+
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0b1020;
+  --bg-sunken: #080c19;
+  --surface: #121a35;
+  --surface-2: #17214a;
+  --surface-3: #1f2b58;
+  --line: #243059;
+  --line-strong: #364585;
+  --text: #e9edf9;
+  --text-2: #b0bad9;
+  --text-3: #8d99c0;
+  --brand: #8ea3ff;
+  --brand-strong: #7088f5;
+  --brand-soft: rgb(142 163 255 / 0.15);
+  --on-brand: #0a0f24;
+  --gold: #e8c277;
+  --gold-soft: rgb(232 194 119 / 0.15);
+  --ok: #46d9a6;
+  --ok-soft: rgb(70 217 166 / 0.14);
+  --warn: #f6b845;
+  --warn-soft: rgb(246 184 69 / 0.14);
+  --bad: #ff8585;
+  --on-bad: #1a0507;
+  --bad-soft: rgb(255 133 133 / 0.14);
+  --info: #62c8ff;
+  --info-soft: rgb(98 200 255 / 0.14);
+  --pattern: rgb(142 163 255 / 0.1);
+  --scrim: rgb(5 8 18 / 0.7);
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.25);
+  --shadow-2: 0 18px 44px rgb(0 0 0 / 0.38);
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f3f4fb;
+  --bg-sunken: #eaecf7;
+  --surface: #ffffff;
+  --surface-2: #f6f7fd;
+  --surface-3: #eceffa;
+  --line: #dde1f1;
+  --line-strong: #bcc4e2;
+  --text: #121a36;
+  --text-2: #424d73;
+  --text-3: #596488;
+  --brand: #3350d8;
+  --brand-strong: #2640bf;
+  --brand-soft: rgb(51 80 216 / 0.1);
+  --on-brand: #ffffff;
+  --gold: #7a5a0d;
+  --gold-soft: rgb(122 90 13 / 0.13);
+  --ok: #0b7a56;
+  --ok-soft: rgb(11 122 86 / 0.11);
+  --warn: #8a5600;
+  --warn-soft: rgb(138 86 0 / 0.12);
+  --bad: #bf2d39;
+  --on-bad: #ffffff;
+  --bad-soft: rgb(191 45 57 / 0.1);
+  --info: #0a67a3;
+  --info-soft: rgb(10 103 163 / 0.1);
+  --pattern: rgb(51 80 216 / 0.09);
+  --scrim: rgb(18 26 54 / 0.5);
+  --shadow-1: 0 1px 2px rgb(18 26 54 / 0.08);
+  --shadow-2: 0 16px 38px rgb(18 26 54 / 0.16);
+}

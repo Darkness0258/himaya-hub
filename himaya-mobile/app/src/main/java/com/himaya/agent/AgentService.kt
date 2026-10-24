@@ -1,273 +1,315 @@
 package com.himaya.agent
 
-import android.app.Notification
-import android.app.NotificationChannel
+import android.app.ActivityManager
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.app.admin.DevicePolicyManager
-import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.media.projection.MediaProjectionManager
+import android.content.pm.ServiceInfo
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.IBinder
-import android.util.Log
-import androidx.core.app.NotificationCompat
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
+import android.os.PowerManager
+import android.os.Process
 import org.json.JSONObject
+import java.net.Inet4Address
+import java.net.NetworkInterface
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
 
 /**
- * Main Himaya Agent Foreground Service.
+ * The long-running part of the agent. It shows the persistent "Himaya is active" notification (visible, not
+ * hidden) and keeps the phone in step with what the parent asked for.
  *
- * Implements the 4 continuous monitoring loops:
- *  1. Heartbeat Loop (every 20s, agent -> hub)
- *  2. Command Execution Loop (polls queued parent actions like lock, pause, push alert)
- *  3. VPN-Guard Loop (detects unauthorized VPN interfaces and reports breach)
- *  4. Policy Sync Loop (syncs rule changes without reinstall)
- *
- * Ground Rules:
- *  - Visible, not hidden: Persistent notification is displayed at all times.
+ * Fixed compared to the first version:
+ *  - the monitoring loops start exactly once (every `onStartCommand` used to launch a fresh set, and the app,
+ *    the boot receiver and the activity all started the service);
+ *  - no hard-coded IP address: it reports the phone's real Wi-Fi address;
+ *  - lock / pause are *desired state* from the hub, re-applied until the hub says otherwise, so a missed
+ *    command cannot leave the phone out of sync;
+ *  - the VPN guard no longer flags Himaya's own website-filter VPN;
+ *  - erasing needs the hub's typed confirmation AND Device admin;
+ *  - a screenshot request becomes a notification the child must approve (Android forbids a background
+ *    service from opening the screen-capture dialog, and a silent capture would not be consent).
  */
 class AgentService : Service() {
 
-    private val TAG = "HimayaAgentService"
-    private val serviceJob = Job()
-    private val serviceScope = CoroutineScope(Dispatchers.IO + serviceJob)
-
-    private var hubUrl: String = ""
-    private var deviceId: String = ""
-    private val hubClient = HubClient()
-
-    private val devicePolicyManager by lazy {
-        getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-    }
-
-    private val adminComponent by lazy {
-        ComponentName(this, DeviceAdminReceiver::class.java)
-    }
-
-    private val connectivityManager by lazy {
-        getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-    }
-
     companion object {
-        const val CHANNEL_ID = "himaya_agent_channel"
-        const val NOTIFICATION_ID = 1001
-        const val EXTRA_HUB_URL = "hub_url"
-        const val EXTRA_DEVICE_ID = "device_id"
+        const val ACTION_START = "com.himaya.agent.START"
+        const val ACTION_STOP = "com.himaya.agent.STOP"
+        const val AGENT_VERSION = "2.0.0"
+        private val PACKAGE_NAME = Regex("^[A-Za-z0-9_.]{3,120}$")
 
-        fun start(context: Context, hubUrl: String, deviceId: String) {
-            val intent = Intent(context, AgentService::class.java).apply {
-                putExtra(EXTRA_HUB_URL, hubUrl)
-                putExtra(EXTRA_DEVICE_ID, deviceId)
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
+        @Volatile var running = false
+
+        fun start(context: Context) {
+            context.startForegroundService(Intent(context, AgentService::class.java).setAction(ACTION_START))
+        }
+
+        fun stop(context: Context) {
+            context.stopService(Intent(context, AgentService::class.java))
         }
     }
 
-    override fun onCreate() {
-        super.onCreate()
-        createNotificationChannel()
-        val notification = buildPersistentNotification("Himaya Active — Safety shield enabled")
-        startForeground(NOTIFICATION_ID, notification)
-    }
+    private var executor: ScheduledExecutorService? = null
+    private val client = HubClient(OkHttpTransport())
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        intent?.getStringExtra(EXTRA_HUB_URL)?.let { if (it.isNotEmpty()) hubUrl = it }
-        intent?.getStringExtra(EXTRA_DEVICE_ID)?.let { if (it.isNotEmpty()) deviceId = it }
-
-        if (hubUrl.isEmpty()) {
-            hubUrl = PreferenceManager.getString(this, "hub_url")
-        }
-        if (deviceId.isEmpty()) {
-            deviceId = PreferenceManager.getString(this, "device_id")
-        }
-
-        hubClient.hubUrl = hubUrl
-
-        if (deviceId.isNotEmpty() && hubUrl.isNotEmpty()) {
-            startContinuousLoops()
-        }
-
-        return START_STICKY
-    }
-
-    private fun startContinuousLoops() {
-        // Loop 1 & 2: Heartbeat + Command Execution (every 20s)
-        serviceScope.launch {
-            while (isActive) {
-                try {
-                    val ip = getLocalIpAddress()
-                    hubClient.heartbeat(deviceId, ip)
-                    pollAndExecuteCommands()
-                } catch (e: Exception) {
-                    Log.e(TAG, "Heartbeat/Command loop error: ${e.message}")
-                }
-                delay(20_000L)
-            }
-        }
-
-        // Loop 3: VPN-Guard Watchdog (every 10s)
-        serviceScope.launch {
-            while (isActive) {
-                try {
-                    checkUnauthorizedVpn()
-                } catch (e: Exception) {
-                    Log.e(TAG, "VPN guard check error: ${e.message}")
-                }
-                delay(10_000L)
-            }
-        }
-
-        // Loop 4: Policy Sync (every 60s)
-        serviceScope.launch {
-            while (isActive) {
-                try {
-                    val rules = mapOf("status" to "active", "enforcement" to "strict")
-                    hubClient.policySync(deviceId, rules)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Policy sync error: ${e.message}")
-                }
-                delay(60_000L)
-            }
-        }
-    }
-
-    private fun pollAndExecuteCommands() {
-        val commands = hubClient.getPendingCommands(deviceId)
-        for (cmd in commands) {
-            val action = cmd.optString("action")
-            Log.i(TAG, "Received remote action: $action")
-
-            when (action) {
-                "lock" -> {
-                    if (devicePolicyManager.isAdminActive(adminComponent)) {
-                        devicePolicyManager.lockNow()
-                        Log.i(TAG, "Screen locked via DevicePolicyManager")
-                    } else {
-                        Log.w(TAG, "Cannot lock screen: Device Admin not active")
-                    }
-                }
-                "push_notification" -> {
-                    val payload = cmd.optJSONObject("payload")
-                    val message = payload?.optString("message") ?: "Notice from parent"
-                    showUrgentAlertNotification(message)
-                }
-                "wipe" -> {
-                    if (devicePolicyManager.isAdminActive(adminComponent)) {
-                        Log.w(TAG, "Executing authorized remote wipe")
-                        devicePolicyManager.wipeData(0)
-                    }
-                }
-                "pause", "block_internet" -> {
-                    updateNotificationText("Internet Access Paused by Parent")
-                }
-                "unpause", "unblock_internet" -> {
-                    updateNotificationText("Himaya Active — Safety shield enabled")
-                }
-                "snapshot" -> {
-                    requestScreenCapture()
-                }
-            }
-        }
-    }
-
-    private fun requestScreenCapture() {
-        // Request MediaProjection permission from user
-        val mpm = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        val intent = mpm.createScreenCaptureIntent()
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        startActivity(intent)
-
-        // Note: The result will be handled by MainActivity.onActivityResult
-        // which will call ScreenShareService.onMediaProjectionResult
-        Log.i(TAG, "Screen capture requested - waiting for user consent")
-    }
-
-    private fun checkUnauthorizedVpn() {
-        val activeNetwork = connectivityManager.activeNetwork ?: return
-        val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return
-
-        val hasVpn = capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
-        // If an untrusted VPN interface is active without our approval, alert the hub
-        if (hasVpn) {
-            Log.w(TAG, "VPN interface detected! Notifying hub...")
-            hubClient.reportVpnAttempt(deviceId, "EXTERNAL_TUN")
-        }
-    }
-
-    private fun getLocalIpAddress(): String {
-        return "192.168.1.42"
-    }
-
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Himaya Device Protection",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Always-visible indicator of active family device safety"
-                setShowBadge(false)
-            }
-            val manager = getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(channel)
-        }
-    }
-
-    private fun buildPersistentNotification(contentText: String): Notification {
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE
-        )
-
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Himaya Protection Active")
-            .setContentText(contentText)
-            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-            .setContentIntent(pendingIntent)
-            .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
-    }
-
-    private fun updateNotificationText(newText: String) {
-        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(NOTIFICATION_ID, buildPersistentNotification(newText))
-    }
-
-    private fun showUrgentAlertNotification(message: String) {
-        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val alert = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("⚠️ Urgent Message from Parent")
-            .setContentText(message)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
-            .setSmallIcon(android.R.drawable.ic_dialog_alert)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .build()
-        manager.notify(2002, alert)
-    }
+    @Volatile private var state = HubState.NONE
+    @Volatile private var connected = false
+    @Volatile private var authOk = true
+    @Volatile private var shownStatus = ""
+    private var knownVpns: Set<String> = emptySet()
+    private var reportedNoAdmin = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onCreate() {
+        super.onCreate()
+        Notifications.ensureChannels(this)
+        enterForeground(statusText())
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        enterForeground(statusText())
+        if (!PreferenceManager.isPaired(this)) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        running = true
+        startLoops()
+        return START_STICKY
+    }
+
+    private fun enterForeground(text: String) {
+        val notification = Notifications.status(this, text)
+        if (Build.VERSION.SDK_INT >= 29) {
+            startForeground(Notifications.ID_STATUS, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            startForeground(Notifications.ID_STATUS, notification)
+        }
+        shownStatus = text
+    }
+
+    /** Start the loops once. Calling this again (the service is started from several places) does nothing. */
+    @Synchronized
+    private fun startLoops() {
+        if (executor != null) return
+        val pool = Executors.newScheduledThreadPool(3)
+        executor = pool
+        pool.scheduleWithFixedDelay(guarded { heartbeat() }, 0, 20, TimeUnit.SECONDS)
+        pool.scheduleWithFixedDelay(guarded { pollCommands() }, 2, 5, TimeUnit.SECONDS)
+        pool.scheduleWithFixedDelay(guarded { enforce() }, 3, 5, TimeUnit.SECONDS)
+        pool.scheduleWithFixedDelay(guarded { checkVpns() }, 6, 20, TimeUnit.SECONDS)
+    }
+
+    /** A scheduled task that throws is silently cancelled forever, so every task catches everything. */
+    private fun guarded(task: () -> Unit): Runnable = Runnable {
+        try {
+            syncClient()
+            task()
+        } catch (e: AuthRejectedException) {
+            onAuthRejected()
+        } catch (e: Throwable) {
+            android.util.Log.w("Himaya", "agent task failed", e)
+        }
+    }
+
+    private fun syncClient() {
+        client.hubUrl = PreferenceManager.hubUrl(this)
+        client.agentKey = PreferenceManager.agentKey(this)
+    }
+
+    private fun deviceId(): String = PreferenceManager.deviceId(this)
+
+    private fun adminComponent() = ComponentName(this, DeviceAdminReceiver::class.java)
+
+    private fun adminActive(): Boolean = getSystemService(DevicePolicyManager::class.java)?.isAdminActive(adminComponent()) == true
+
+    // ------------------------------------------------------------------ hub conversation
+
+    private fun heartbeat() {
+        val reply = client.heartbeat(deviceId(), localIp(), capabilities(), AGENT_VERSION)
+        if (reply == null) {
+            setConnected(false)
+            return
+        }
+        authOk = true
+        setConnected(true)
+        if (reply.dnsPort != null) PreferenceManager.setDnsPort(this, reply.dnsPort)
+        applyState(reply.state)
+    }
+
+    private fun pollCommands() {
+        val reply = client.commands(deviceId()) ?: return
+        reply.state?.let { applyState(it) }
+        for (command in reply.commands) {
+            try {
+                execute(command)
+            } catch (e: Exception) {
+                android.util.Log.w("Himaya", "command ${command.action} failed", e)
+            }
+        }
+    }
+
+    private fun execute(command: HubCommand) {
+        when (command.action) {
+            "push_notification" -> {
+                val text = command.payload.optString("message").take(500)
+                if (text.isNotBlank()) Notifications.message(this, text)
+            }
+            "force_close_app" -> closeApp(command.payload.optString("app"))
+            "snapshot" -> Notifications.screenRequest(this)
+            "wipe" -> wipe(command.payload.optBoolean("confirmed"))
+            // lock / unlock / pause / unpause arrive as *state* (heartbeat and command poll) and are enforced in enforce()
+        }
+    }
+
+    private fun closeApp(name: String) {
+        val pkg = name.trim()
+        if (!PACKAGE_NAME.matches(pkg) || pkg == packageName) {
+            notice("Refused to close \"$pkg\".")
+            return
+        }
+        getSystemService(ActivityManager::class.java)?.killBackgroundProcesses(pkg)
+    }
+
+    private fun wipe(confirmed: Boolean) {
+        if (!confirmed) return
+        if (!adminActive()) {
+            notice("Erase needs Device admin to be turned on in the Himaya app.")
+            return
+        }
+        getSystemService(DevicePolicyManager::class.java)?.wipeData(0)
+    }
+
+    private fun notice(message: String) {
+        client.reportEvent(deviceId(), "enforcement_notice", JSONObject().put("message", message))
+    }
+
+    // ------------------------------------------------------------------ desired state
+
+    private fun applyState(newState: HubState) {
+        state = newState
+        VpnAgent.blockAll = newState.paused || newState.bedtimeActive
+        refreshNotification()
+    }
+
+    private fun setConnected(value: Boolean) {
+        if (connected != value) {
+            connected = value
+            refreshNotification()
+        }
+    }
+
+    private fun statusText(): String = when {
+        !authOk -> "Your parent removed this phone from Himaya"
+        !connected && !running -> "Starting"
+        !connected -> "Can't reach your hub right now"
+        state.locked -> "Locked by your parent"
+        state.paused -> "Internet paused by your parent"
+        state.bedtimeActive -> "Bedtime: internet is off"
+        else -> "Connected to your family's hub"
+    }
+
+    private fun refreshNotification() {
+        val text = statusText()
+        if (text == shownStatus) return
+        shownStatus = text
+        getSystemService(NotificationManager::class.java)?.notify(Notifications.ID_STATUS, Notifications.status(this, text))
+    }
+
+    /** Runs every few seconds: re-apply the lock, and keep the website filter alive. */
+    private fun enforce() {
+        if (state.locked) {
+            if (adminActive()) {
+                val power = getSystemService(PowerManager::class.java)
+                if (power?.isInteractive == true) getSystemService(DevicePolicyManager::class.java)?.lockNow()
+            } else if (!reportedNoAdmin) {
+                reportedNoAdmin = true
+                notice("This phone cannot be locked: Device admin is off in the Himaya app.")
+            }
+        }
+        if (PreferenceManager.adminLost(this)) {
+            PreferenceManager.setAdminLost(this, false)
+            notice("Device admin was turned off on the phone, so it can no longer be locked or erased remotely.")
+        }
+        if (PreferenceManager.filterLost(this)) {
+            PreferenceManager.setFilterLost(this, false)
+            notice("The website filter (VPN) was turned off on the phone.")
+        }
+        if (PreferenceManager.filterOn(this) && !VpnAgent.running && VpnAgent.consentIntent(this) == null) VpnAgent.start(this)
+    }
+
+    // ------------------------------------------------------------------ VPN guard
+
+    private fun checkVpns() {
+        val manager = getSystemService(ConnectivityManager::class.java) ?: return
+        val found = ArrayList<String>()
+        @Suppress("DEPRECATION")
+        for (network in manager.allNetworks) {
+            val caps = manager.getNetworkCapabilities(network) ?: continue
+            if (!caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) continue
+            if (Build.VERSION.SDK_INT >= 31 && caps.ownerUid == Process.myUid()) continue // Himaya's own filter
+            found.add(manager.getLinkProperties(network)?.interfaceName ?: "vpn")
+        }
+        // Before Android 12 the owner is unknown: if our filter is up, assume one VPN network is ours.
+        if (Build.VERSION.SDK_INT < 31 && VpnAgent.running && found.isNotEmpty()) found.removeAt(0)
+        val now = found.toSet()
+        for (name in now - knownVpns) client.reportVpn(deviceId(), name)
+        knownVpns = now
+    }
+
+    // ------------------------------------------------------------------ helpers
+
+    private fun capabilities(): JSONObject {
+        val admin = adminActive()
+        return JSONObject()
+            .put("os", "android")
+            .put("sdk", Build.VERSION.SDK_INT)
+            .put("lock", admin)
+            .put("wipe", admin)
+            .put("vpn_dns", VpnAgent.running)
+            .put("pause", "dns")
+            .put("screenshots", "on-request")
+    }
+
+    private fun localIp(): String? = try {
+        NetworkInterface.getNetworkInterfaces()
+            ?.toList()
+            ?.filter { it.isUp && !it.isLoopback }
+            ?.flatMap { it.inetAddresses.toList() }
+            ?.firstOrNull { it is Inet4Address && it.isSiteLocalAddress }
+            ?.hostAddress
+    } catch (e: Exception) {
+        null
+    }
+
+    /** The hub no longer knows this phone: let go of everything so the phone is never left locked or offline. */
+    private fun onAuthRejected() {
+        if (!authOk) return
+        authOk = false
+        connected = false
+        state = HubState.NONE
+        VpnAgent.blockAll = false
+        PreferenceManager.setRemovedByHub(this, true)
+        VpnAgent.stop(this)
+        Notifications.message(this, "Your parent removed this phone from Himaya. Locks and internet pauses are released.")
+        refreshNotification()
+    }
+
     override fun onDestroy() {
-        serviceJob.cancel()
+        running = false
+        VpnAgent.blockAll = false
+        executor?.shutdownNow()
+        executor = null
         super.onDestroy()
     }
 }

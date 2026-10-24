@@ -1,182 +1,164 @@
 package com.himaya.agent
 
-import android.net.Uri
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody
-import okhttp3.Response
-import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
-import java.io.File
 import java.io.IOException
-import java.util.concurrent.TimeUnit
+
+/** The hub no longer accepts this device's key (the parent removed the device, or the hub was reset). */
+class AuthRejectedException(message: String = "The hub rejected this device's key") : Exception(message)
+
+data class HubState(val locked: Boolean, val paused: Boolean, val bedtimeActive: Boolean) {
+    companion object {
+        val NONE = HubState(locked = false, paused = false, bedtimeActive = false)
+    }
+}
+
+data class HeartbeatReply(val state: HubState, val dnsPort: Int?, val snapshotIntervalS: Int)
+data class HubCommand(val action: String, val payload: JSONObject)
+data class CommandsReply(val commands: List<HubCommand>, val state: HubState?)
+data class PairSuccess(val deviceId: String, val agentKey: String, val dnsPort: Int?)
+
+sealed class PairOutcome {
+    class Success(val result: PairSuccess) : PairOutcome()
+    object WrongPin : PairOutcome()
+    class RateLimited(val message: String) : PairOutcome()
+    class Unreachable(val message: String) : PairOutcome()
+    class Failed(val message: String) : PairOutcome()
+}
 
 /**
- * Robust HTTP client that communicates with the Himaya hub.
+ * Talks to the hub. Every call is blocking: run it on a background thread.
+ *
+ * Differences from the first version:
+ *  - every agent request carries the per-device key (`X-API-Key`) issued at pairing;
+ *  - request bodies are JSON in the shapes the hub validates (the old client sent some values in bodies
+ *    the hub ignored, so IPs and blocked hosts were lost);
+ *  - pairing returns the hub-assigned device id and key, which the old client discarded;
+ *  - responses are always closed (the transport does it), so connections are no longer leaked.
  */
-class HubClient {
+class HubClient(private val http: Http, hubUrl: String = "", var agentKey: String = "") {
 
-    private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaTypeOrNull()
-
-    private val client: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(15L, TimeUnit.SECONDS)
-        .readTimeout(20L, TimeUnit.SECONDS)
-        .retryOnConnectionFailure(true)
-        .build()
-
-    var hubUrl: String = ""
-
-    fun checkConnection(): Boolean {
-        return try {
-            val res = get("/health")
-            res?.isSuccessful == true
-        } catch (e: Exception) {
-            false
+    var hubUrl: String = hubUrl.trim().trimEnd('/')
+        set(value) {
+            field = value.trim().trimEnd('/')
         }
+
+    private fun agentHeaders(): Map<String, String> = mapOf("X-API-Key" to agentKey)
+
+    private fun checkAuth(reply: Http.Reply) {
+        if (reply.code == 401 || reply.code == 403) throw AuthRejectedException()
     }
 
-    fun register(
-        name: String,
-        platform: String,
-        deviceId: String,
-        ownerType: String
-    ): Boolean {
-        val json = JSONObject().apply {
-            put("name", name)
-            put("platform", platform)
-            put("device_id", deviceId)
-            put("owner_type", ownerType)
-        }
-        val res = post("/devices", json.toString())
-        return res?.isSuccessful == true
+    private fun parseState(json: JSONObject?): HubState? {
+        json ?: return null
+        return HubState(json.optBoolean("locked"), json.optBoolean("paused"), json.optBoolean("bedtime_active"))
     }
 
-    fun pairWithPin(
-        pin: String,
-        name: String,
-        platform: String = "android"
-    ): Boolean {
-        val json = JSONObject().apply {
-            put("pin", pin)
-            put("name", name)
-            put("platform", platform)
-            put("owner_type", "child")
+    fun pair(baseUrl: String, pin: String, deviceName: String, ownerType: String): PairOutcome {
+        val body = JSONObject()
+            .put("pin", pin)
+            .put("name", deviceName)
+            .put("platform", "android")
+            .put("owner_type", ownerType)
+        val reply = try {
+            http.request("POST", baseUrl.trim().trimEnd('/') + "/enroll/pair", emptyMap(), body.toString())
+        } catch (e: IOException) {
+            return PairOutcome.Unreachable(e.message ?: "Could not reach the hub")
         }
-        val res = post("/enroll/pair", json.toString())
-        return res?.isSuccessful == true
-    }
-
-    fun heartbeat(deviceId: String, ip: String): Boolean {
-        val json = JSONObject().apply {
-            put("ip", ip)
-        }
-        val res = post("/agents/$deviceId/heartbeat", json.toString())
-        return res?.isSuccessful == true
-    }
-
-    fun getPendingCommands(deviceId: String): List<JSONObject> {
-        val res = get("/agents/$deviceId/commands") ?: return emptyList()
-        val list = mutableListOf<JSONObject>()
-        try {
-            val bodyStr = res.body?.string() ?: return emptyList()
-            val root = JSONObject(bodyStr)
-            val arr = root.optJSONArray("commands") ?: JSONArray()
-            for (i in 0 until arr.length()) {
-                val obj = arr.optJSONObject(i)
-                if (obj != null) list.add(obj)
+        return when (reply.code) {
+            200 -> try {
+                val json = JSONObject(reply.body)
+                val dnsPort = if (json.isNull("dns_port")) null else json.optInt("dns_port")
+                PairOutcome.Success(PairSuccess(json.getString("device_id"), json.getString("agent_key"), dnsPort))
+            } catch (e: JSONException) {
+                PairOutcome.Failed("The hub sent an answer this app does not understand. Update the hub and the app.")
             }
-        } catch (e: Exception) {
-            // error parsing commands
+            403 -> PairOutcome.WrongPin
+            429 -> PairOutcome.RateLimited(detail(reply.body, "Too many wrong PINs. Wait a few minutes."))
+            else -> PairOutcome.Failed(detail(reply.body, "The hub refused the request (${reply.code})."))
         }
-        return list
     }
 
-    fun reportDnsBlock(deviceId: String, host: String): Boolean {
-        val json = JSONObject().apply {
-            put("host", host)
+    private fun detail(body: String, fallback: String): String = try {
+        JSONObject(body).optString("detail", fallback).ifBlank { fallback }
+    } catch (e: JSONException) {
+        fallback
+    }
+
+    /** null = the hub could not be reached. Throws [AuthRejectedException] if the key is no longer valid. */
+    fun heartbeat(deviceId: String, ip: String?, caps: JSONObject, agentVersion: String): HeartbeatReply? {
+        val body = JSONObject().put("caps", caps).put("agent_version", agentVersion)
+        if (!ip.isNullOrBlank()) body.put("ip", ip)
+        val reply = try {
+            http.request("POST", "$hubUrl/agents/$deviceId/heartbeat", agentHeaders(), body.toString())
+        } catch (e: IOException) {
+            return null
         }
-        val res = post("/agents/$deviceId/dns-block", json.toString())
-        return res?.isSuccessful == true
-    }
-
-    fun reportVpnAttempt(deviceId: String, iface: String): Boolean {
-        val json = JSONObject().apply {
-            put("interface", iface)
-        }
-        val res = post("/agents/$deviceId/vpn-attempt", json.toString())
-        return res?.isSuccessful == true
-    }
-
-    fun policySync(deviceId: String, rules: Map<String, Any>): Boolean {
-        val json = JSONObject(rules)
-        val res = post("/agents/$deviceId/policy-sync", json.toString())
-        return res?.isSuccessful == true
-    }
-
-    fun uploadSnapshot(deviceId: String, file: File): Boolean {
-        if (hubUrl.isEmpty()) return false
+        checkAuth(reply)
+        if (reply.code != 200) return null
         return try {
-            val cleanBase = hubUrl.trimEnd('/')
-            val fullUrl = "$cleanBase/agents/$deviceId/snapshot"
-
-            val mediaType = "image/jpeg".toMediaTypeOrNull() ?: return false
-
-            val fileBytes = file.readBytes()
-            val requestBody = MultipartBody.Builder()
-                .setType(MultipartBody.FORM)
-                .addFormDataPart(
-                    "file",
-                    file.name,
-                    RequestBody.create(mediaType, fileBytes)
-                )
-                .build()
-
-            val request = Request.Builder()
-                .url(fullUrl)
-                .post(requestBody)
-                .build()
-            client.newCall(request).execute().use { response ->
-                response.isSuccessful
-            }
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    private fun post(path: String, jsonBody: String): Response? {
-        if (hubUrl.isEmpty()) return null
-        return try {
-            val cleanBase = hubUrl.trimEnd('/')
-            val cleanPath = path.trimStart('/')
-            val fullUrl = "$cleanBase/$cleanPath"
-
-            val body = RequestBody.create(JSON_MEDIA_TYPE, jsonBody.toByteArray())
-            val request = Request.Builder()
-                .url(fullUrl)
-                .post(body)
-                .build()
-            client.newCall(request).execute()
-        } catch (e: Exception) {
+            val json = JSONObject(reply.body)
+            HeartbeatReply(
+                parseState(json.optJSONObject("state")) ?: HubState.NONE,
+                if (json.isNull("dns_port")) null else json.optInt("dns_port"),
+                json.optInt("snapshot_interval_s", 300),
+            )
+        } catch (e: JSONException) {
             null
         }
     }
 
-    private fun get(path: String): Response? {
-        if (hubUrl.isEmpty()) return null
+    fun commands(deviceId: String): CommandsReply? {
+        val reply = try {
+            http.request("GET", "$hubUrl/agents/$deviceId/commands", agentHeaders())
+        } catch (e: IOException) {
+            return null
+        }
+        checkAuth(reply)
+        if (reply.code != 200) return null
         return try {
-            val cleanBase = hubUrl.trimEnd('/')
-            val cleanPath = path.trimStart('/')
-            val fullUrl = "$cleanBase/$cleanPath"
-
-            val request = Request.Builder()
-                .url(fullUrl)
-                .get()
-                .build()
-            client.newCall(request).execute()
-        } catch (e: Exception) {
+            val json = JSONObject(reply.body)
+            val array = json.optJSONArray("commands")
+            val list = ArrayList<HubCommand>()
+            if (array != null) {
+                for (i in 0 until array.length()) {
+                    val item = array.getJSONObject(i)
+                    list.add(HubCommand(item.optString("action"), item.optJSONObject("payload") ?: JSONObject()))
+                }
+            }
+            CommandsReply(list, parseState(json.optJSONObject("state")))
+        } catch (e: JSONException) {
             null
         }
+    }
+
+    fun reportVpn(deviceId: String, interfaceName: String): Boolean =
+        post("$hubUrl/agents/$deviceId/vpn-attempt", JSONObject().put("interface", interfaceName))
+
+    fun reportDnsBlock(deviceId: String, host: String): Boolean =
+        post("$hubUrl/agents/$deviceId/dns-block", JSONObject().put("host", host))
+
+    /** Types the hub accepts from an agent: `agent_stopped` and `enforcement_notice`. */
+    fun reportEvent(deviceId: String, type: String, data: JSONObject): Boolean =
+        post("$hubUrl/agents/$deviceId/event", JSONObject().put("type", type).put("data", data))
+
+    private fun post(url: String, body: JSONObject): Boolean {
+        val reply = try {
+            http.request("POST", url, agentHeaders(), body.toString())
+        } catch (e: IOException) {
+            return false
+        }
+        checkAuth(reply)
+        return reply.code in 200..299
+    }
+
+    fun uploadScreenshot(deviceId: String, jpeg: ByteArray): Boolean {
+        val reply = try {
+            http.upload("$hubUrl/agents/$deviceId/snapshot", agentHeaders(), "file", "screen.jpg", "image/jpeg", jpeg)
+        } catch (e: IOException) {
+            return false
+        }
+        checkAuth(reply)
+        return reply.code in 200..299
     }
 }

@@ -1,144 +1,94 @@
-import { useState, useEffect, useRef } from 'react'
-import Overview from './components/Overview'
-import DeviceList from './components/DeviceList'
-import ControlPanel from './components/ControlPanel'
-import EventFeed from './components/EventFeed'
+import { useCallback, useEffect, useState } from 'react'
+import { StarMark } from './components/Brand'
+import { Shell } from './components/Shell'
+import { api, ApiError, loadStoredKey, restoreKey, storeKey } from './lib/api'
+import { useRoute, useTheme } from './lib/hooks'
+import { HubProvider } from './lib/store'
+import { ToastProvider } from './lib/toast'
+import { Activity } from './views/Activity'
+import { Devices } from './views/Devices'
+import { Enroll } from './views/Enroll'
+import { Home } from './views/Home'
+import { Login } from './views/Login'
+import { Screens } from './views/Screens'
+import { Settings } from './views/Settings'
 
-type Device = {
-  id: number
-  device_id: string
-  name: string
-  platform: string
-  ip: string | null
-  status: string
-  owner_type: string
-  last_seen: string | null
-}
+const TITLES = { home: 'Home', devices: 'Devices', activity: 'Activity', screens: 'Screens', enroll: 'Add a device', settings: 'Settings' } as const
 
-type Event = {
-  id: number
-  device_id: string
-  type: string
-  data: Record<string, unknown>
-  timestamp: string
-}
-
-type Snapshot = {
-  devices: Device[]
-  events: Event[]
-}
-
-type WSMessage = {
-  type: string
-  devices?: Device[]
-  events?: Event[]
-}
-
-function App() {
-  const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
-  const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
-  const [expandedDevice, setExpandedDevice] = useState<string | null>(null)
-  const wsRef = useRef<WebSocket | null>(null)
-
-  // WebSocket connection — runs once on mount, independent of selectedDevice
+function Routes({ onSignOut }: { onSignOut: () => void }) {
+  const route = useRoute()
   useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const wsUrl = `${protocol}//${window.location.host}/ws`
-    const ws = new WebSocket(wsUrl)
-    wsRef.current = ws
+    document.title = `${TITLES[route.view]} - Himaya`
+    document.getElementById('main')?.focus({ preventScroll: true })
+    window.scrollTo(0, 0)
+  }, [route.view])
 
-    ws.onopen = () => console.log('[WS] Connected')
-    ws.onclose = () => console.log('[WS] Disconnected')
+  switch (route.view) {
+    case 'devices':
+      return <Devices />
+    case 'activity':
+      return <Activity />
+    case 'screens':
+      return <Screens />
+    case 'enroll':
+      return <Enroll />
+    case 'settings':
+      return <Settings onSignOut={onSignOut} />
+    default:
+      return <Home />
+  }
+}
 
-    ws.onmessage = (event) => {
-      try {
-        const msg: WSMessage = JSON.parse(event.data)
-        if (msg.type === 'snapshot' && msg.devices && msg.events) {
-          setSnapshot({ devices: msg.devices, events: msg.events })
+export default function App() {
+  useTheme()
+  const [phase, setPhase] = useState<'checking' | 'out' | 'in'>(() => (loadStoredKey() ? 'checking' : 'out'))
+  const [notice, setNotice] = useState('')
+
+  useEffect(() => {
+    if (phase !== 'checking') return
+    const key = restoreKey()
+    api
+      .checkKey(key)
+      .then(() => setPhase('in'))
+      .catch((error: unknown) => {
+        if (error instanceof ApiError && error.status === 401) {
+          storeKey('', false)
+          setNotice('Your saved key no longer works. Please sign in again.')
+        } else {
+          setNotice(error instanceof Error ? error.message : 'Could not reach the hub.')
         }
-      } catch (e) {
-        console.error('[WS] Parse error:', e)
-      }
-    }
+        setPhase('out')
+      })
+  }, [phase])
 
-    return () => ws.close()
+  const signOut = useCallback((message = '') => {
+    storeKey('', false)
+    setNotice(message)
+    setPhase('out')
   }, [])
 
-  // Initial REST fetch + periodic refresh
-  useEffect(() => {
-    const loadSnapshot = async () => {
-      const [devicesRes, eventsRes] = await Promise.all([
-        fetch('/devices').then(r => r.json()),
-        fetch('/events').then(r => r.json())
-      ])
-      setSnapshot({ devices: devicesRes, events: eventsRes })
-      if (devicesRes.length > 0 && !selectedDevice) {
-        setSelectedDevice(devicesRes[0].device_id)
-      }
-    }
-    loadSnapshot()
-
-    const interval = setInterval(loadSnapshot, 10000)
-    return () => clearInterval(interval)
-  }, [selectedDevice])
-
-  
-  const handleDeviceSelect = (deviceId: string) => {
-    setSelectedDevice(deviceId)
-  }
-
-  const handleToggleExpand = (deviceId: string) => {
-    setExpandedDevice(expandedDevice === deviceId ? null : deviceId)
-  }
-
-  if (!snapshot) {
-    return (
-      <div className="app-shell">
-        <header className="header">
-          <h1>Himaya</h1>
-          <span className="status connecting">Connecting...</span>
-        </header>
-        <main className="main">Loading dashboard...</main>
-      </div>
-    )
-  }
-
-  const device = snapshot.devices.find(d => d.device_id === selectedDevice)
-
   return (
-    <div className="app-shell">
-      <header className="header">
-        <h1>Himaya</h1>
-        <div className="header-actions">
-          <span className={`status ${snapshot.devices.some(d => d.status === 'online') ? 'online' : 'offline'}`}>
-            {snapshot.devices.filter(d => d.status === 'online').length} / {snapshot.devices.length} Online
-          </span>
+    <ToastProvider>
+      {phase === 'checking' ? (
+        <div className="splash" role="status" aria-label="Loading">
+          <StarMark size={64} />
         </div>
-      </header>
-
-      <main className="main">
-        <Overview snapshot={snapshot} />
-
-        <div className="content-grid">
-          <section className="panel devices-panel">
-            <DeviceList
-              devices={snapshot.devices}
-              selectedDevice={selectedDevice}
-              onSelect={handleDeviceSelect}
-              expandedDevice={expandedDevice}
-              onToggleExpand={handleToggleExpand}
-            />
-          </section>
-
-          <section className="panel control-panel">
-            <ControlPanel device={device} />
-          </section>
-        </div>
-
-        <EventFeed events={snapshot.events} />
-      </main>
-    </div>
+      ) : phase === 'out' ? (
+        <Login
+          notice={notice}
+          onSuccess={(key, remember) => {
+            storeKey(key, remember)
+            setNotice('')
+            setPhase('in')
+          }}
+        />
+      ) : (
+        <HubProvider onSignOut={() => signOut('You were signed out. Please sign in again.')}>
+          <Shell>
+            <Routes onSignOut={() => signOut()} />
+          </Shell>
+        </HubProvider>
+      )}
+    </ToastProvider>
   )
 }
-
-export default App

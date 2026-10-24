@@ -1,38 +1,24 @@
 package com.himaya.agent
 
-import android.app.admin.DeviceAdminReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
-import android.widget.Toast
 
 /**
- * Device administrator receiver.
- *
- * Required for remote lock and wipe actions.
- * The device admin policy is defined in res/xml/device_admin.xml.
+ * Device admin lets Himaya lock the screen and, for a lost phone, erase it. Only the `force-lock` and
+ * `wipe-data` policies are declared (see res/xml/device_admin.xml). The class keeps its name because
+ * enroll-device-owner.bat refers to `com.himaya.agent/.DeviceAdminReceiver`.
  */
-class DeviceAdminReceiver : DeviceAdminReceiver() {
+class DeviceAdminReceiver : android.app.admin.DeviceAdminReceiver() {
 
     override fun onEnabled(context: Context, intent: Intent) {
-        super.onEnabled(context, intent)
-        Toast.makeText(context, "Himaya Device Protection Active", Toast.LENGTH_LONG).show()
-        Log.i("DeviceAdminReceiver", "Device Admin Enabled")
+        PreferenceManager.setAdminLost(context, false)
     }
+
+    override fun onDisableRequested(context: Context, intent: Intent): CharSequence =
+        "Without Device admin, Himaya cannot lock this phone or erase it if it is lost. Your parent will be told."
 
     override fun onDisabled(context: Context, intent: Intent) {
-        super.onDisabled(context, intent)
-        Toast.makeText(context, "Himaya Device Admin Disabled", Toast.LENGTH_LONG).show()
-        Log.w("DeviceAdminReceiver", "Device Admin Disabled")
-    }
-
-    override fun onPasswordFailed(context: Context, intent: Intent) {
-        super.onPasswordFailed(context, intent)
-        Log.w("DeviceAdminReceiver", "Password failed")
-    }
-
-    override fun onPasswordSucceeded(context: Context, intent: Intent) {
-        super.onPasswordSucceeded(context, intent)
-        Log.i("DeviceAdminReceiver", "Password succeeded")
+        // The agent reports this to the hub on its next tick.
+        PreferenceManager.setAdminLost(context, true)
     }
 }

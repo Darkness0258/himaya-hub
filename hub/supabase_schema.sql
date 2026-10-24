@@ -1,9 +1,9 @@
 -- ====================================================================
--- Himaya Family Safety Hub — Supabase PostgreSQL Database Schema
--- Paste and run this script in your Supabase SQL Editor
+-- Himaya Family Safety Hub - PostgreSQL / Supabase schema
+-- Optional: the hub creates and upgrades all of this by itself when it connects.
+-- Run it in the Supabase SQL Editor only if you want to create the tables up front.
 -- ====================================================================
 
--- 1. Devices Table
 CREATE TABLE IF NOT EXISTS devices (
     id SERIAL PRIMARY KEY,
     device_id TEXT UNIQUE NOT NULL,
@@ -11,58 +11,79 @@ CREATE TABLE IF NOT EXISTS devices (
     platform TEXT NOT NULL,
     ip TEXT,
     owner_type TEXT DEFAULT 'child',
-    status TEXT DEFAULT 'offline',
-    last_seen TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    status TEXT DEFAULT 'offline',          -- connectivity only: online / offline
+    last_seen TEXT,
+    created_at TEXT NOT NULL,
+    locked INTEGER DEFAULT 0,               -- parent-controlled state
+    paused INTEGER DEFAULT 0,
+    caps TEXT,                              -- what the agent can enforce (JSON)
+    agent_version TEXT
 );
 
--- 2. Security & Activity Events Table
 CREATE TABLE IF NOT EXISTS events (
     id SERIAL PRIMARY KEY,
     device_id TEXT NOT NULL,
     type TEXT NOT NULL,
-    data JSONB NOT NULL DEFAULT '{}'::jsonb,
-    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    data TEXT NOT NULL,
+    timestamp TEXT NOT NULL
 );
 
--- 3. Queued Remote Commands Table
 CREATE TABLE IF NOT EXISTS commands (
     id SERIAL PRIMARY KEY,
     device_id TEXT NOT NULL,
     action TEXT NOT NULL,
-    payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+    payload TEXT NOT NULL,
     status TEXT DEFAULT 'pending',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TEXT NOT NULL
 );
 
--- 4. Content Filtering & Curfew Rules Table
 CREATE TABLE IF NOT EXISTS rules (
     device_id TEXT PRIMARY KEY,
-    blocked_categories JSONB DEFAULT '["adult", "gambling"]'::jsonb,
-    blocked_domains JSONB DEFAULT '[]'::jsonb,
-    bedtime_enabled BOOLEAN DEFAULT FALSE,
+    blocked_categories TEXT DEFAULT '["adult", "gambling"]',
+    blocked_domains TEXT DEFAULT '[]',
+    allowed_domains TEXT DEFAULT '[]',
+    bedtime_enabled INTEGER DEFAULT 0,
     bedtime_start TEXT DEFAULT '21:00',
     bedtime_end TEXT DEFAULT '07:00',
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    snapshot_interval_s INTEGER DEFAULT 300,
+    updated_at TEXT NOT NULL
 );
 
--- 5. Screen Snapshots Metadata Table
 CREATE TABLE IF NOT EXISTS snapshots (
     id SERIAL PRIMARY KEY,
     device_id TEXT NOT NULL,
     filename TEXT NOT NULL,
     file_path TEXT NOT NULL,
-    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    timestamp TEXT NOT NULL
 );
 
--- 6. System & Network Settings Table
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
 
--- Performance Indexes
-CREATE INDEX IF NOT EXISTS idx_events_device_id ON events(device_id);
-CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_commands_device_status ON commands(device_id, status);
-CREATE INDEX IF NOT EXISTS idx_snapshots_device_timestamp ON snapshots(device_id, timestamp DESC);
+-- Only SHA-256 hashes of keys are stored, never the keys themselves.
+CREATE TABLE IF NOT EXISTS api_keys (
+    key_hash TEXT PRIMARY KEY,
+    role TEXT NOT NULL,
+    device_id TEXT,
+    created_at TEXT NOT NULL,
+    last_used TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_events_dev ON events(device_id);
+CREATE INDEX IF NOT EXISTS idx_events_ts ON events(timestamp);
+CREATE INDEX IF NOT EXISTS idx_cmds_dev ON commands(device_id, status);
+CREATE INDEX IF NOT EXISTS idx_snaps_dev ON snapshots(device_id, id);
+CREATE INDEX IF NOT EXISTS idx_keys_dev ON api_keys(device_id);
+
+-- IMPORTANT on Supabase: every table in the "public" schema is reachable through the project's
+-- auto-generated REST API. Row Level Security with NO policies means the anon/authenticated roles
+-- can see nothing, while the hub (which connects as the table owner) keeps full access.
+ALTER TABLE devices   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE events    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE commands  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rules     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE snapshots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE settings  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE api_keys  ENABLE ROW LEVEL SECURITY;

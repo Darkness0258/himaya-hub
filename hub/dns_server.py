@@ -1,164 +1,244 @@
-"""Himaya Built-in DNS Sinkhole & Filtering Proxy Server.
+"""Himaya DNS filtering resolver (UDP).
 
-Listens for UDP DNS queries from network clients (Android VPN / Windows Agent / Local Router).
-- Matches domains against blocklists and parental rules
-- Sinkholes blocked domains to 0.0.0.0
-- Logs blocks directly to Himaya Hub database and emits live security alerts
-- Forwards clean queries to upstream secure resolver (Quad9 / Cloudflare Family)
+Devices that use the hub as their DNS server get:
+
+* blocked domains answered with ``0.0.0.0`` (A) / ``::`` (AAAA), or an empty
+  NOERROR answer for other record types, so clients move on immediately;
+* the parent's per-device rules applied (categories, custom domains, exceptions,
+  bedtime window and "pause internet"), via :class:`filtering.FilterEngine`;
+* everything else forwarded to a family-safe upstream (Cloudflare 1.1.1.3 by
+  default) with a proper SERVFAIL when the upstream is unreachable.
+
+Differences from the first version
+----------------------------------
+* The sinkhole used to answer **every** query type with an A record. AAAA and
+  HTTPS lookups (which browsers send constantly) got a malformed answer.
+* The block list was a fixed set that ignored the parent's rules entirely.
+* The server was an open resolver for anyone who could reach the port. Clients
+  outside private/loopback/CGNAT ranges are now ignored unless explicitly allowed.
+* A failed upstream lookup left the client hanging until its own timeout.
 """
 from __future__ import annotations
+
 import concurrent.futures
+import logging
 import socket
 import struct
 import threading
-import time
-from typing import Callable, Optional, Set
+from typing import Callable, Dict, Optional, Tuple
 
-DEFAULT_UPSTREAM_DNS = ("1.1.1.3", 53)  # Cloudflare Family (malware + adult content blocking)
+import security
+from filtering import Decision
 
-POPULAR_BLOCKLIST: Set[str] = {
-    "tiktok.com",
-    "ads.tiktok.com",
-    "byteoversea.com",
-    "pornhub.com",
-    "xvideos.com",
-    "xnxx.com",
-    "gambling.com",
-    "bet365.com",
-    "roblox.com",
-    "kick.com",
-    "discord.gg",
-    "omegle.com"
-}
+log = logging.getLogger("himaya.dns")
+
+QTYPE_A = 1
+QTYPE_AAAA = 28
 
 
-def parse_dns_name(data: bytes, offset: int = 12) -> tuple[str, int]:
-    """Parse standard DNS QNAME label format safely."""
+def parse_question(data: bytes) -> Optional[Tuple[str, int, int, int]]:
+    """Parse the first question of a DNS query.
+
+    Returns ``(qname, qtype, qclass, end_offset)`` or ``None`` if the packet is
+    malformed. Compression pointers are rejected: they are not valid inside the
+    question of a normal query and are a classic source of parser bugs.
+    """
+    if len(data) < 17:  # 12 header + root label + 4 type/class
+        return None
+    if int.from_bytes(data[4:6], "big") < 1:
+        return None
     labels = []
-    curr = offset
-    data_len = len(data)
-    while curr < data_len:
-        length = data[curr]
+    pos = 12
+    total = 0
+    while True:
+        if pos >= len(data):
+            return None
+        length = data[pos]
+        pos += 1
         if length == 0:
-            curr += 1
             break
-        if length >= 192:  # DNS compression pointer (0xC0)
-            curr += 2
-            break
-        curr += 1
-        if curr + length > data_len:
-            break
-        labels.append(data[curr:curr + length].decode("utf-8", errors="ignore"))
-        curr += length
-    return ".".join(labels).lower(), curr
+        if length & 0xC0 or length > 63:
+            return None
+        if pos + length > len(data):
+            return None
+        labels.append(data[pos:pos + length].decode("latin-1"))
+        pos += length
+        total += length + 1
+        if total > 253:
+            return None
+    if pos + 4 > len(data):
+        return None
+    qtype, qclass = struct.unpack(">HH", data[pos:pos + 4])
+    return ".".join(labels).lower(), qtype, qclass, pos + 4
 
 
-def build_sinkhole_response(query_data: bytes, domain: str) -> bytes:
-    """Construct a DNS A-record response pointing to 0.0.0.0 (Sinkhole)."""
-    if len(query_data) < 12:
+def build_blocked_response(query: bytes, qtype: int, ttl: int = 60) -> bytes:
+    """Sinkhole answer matching the question's record type."""
+    parsed = parse_question(query)
+    if parsed is None:
         return b""
-    tx_id = query_data[:2]
-    flags = b"\x81\x80"  # Standard query response, No error
-    qdcount = query_data[4:6]
-    ancount = b"\x00\x01"  # 1 Answer
-    nscount = b"\x00\x00"
-    arcount = b"\x00\x00"
+    qend = parsed[3]
+    question = query[12:qend]
+    recursion_desired = query[2] & 0x01
+    flags = 0x8000 | (recursion_desired << 8) | 0x0080  # QR, RD echoed, RA, RCODE=0
+    if qtype == QTYPE_A:
+        answer = b"\xc0\x0c" + struct.pack(">HHIH", QTYPE_A, 1, ttl, 4) + b"\x00" * 4
+        ancount = 1
+    elif qtype == QTYPE_AAAA:
+        answer = b"\xc0\x0c" + struct.pack(">HHIH", QTYPE_AAAA, 1, ttl, 16) + b"\x00" * 16
+        ancount = 1
+    else:
+        answer, ancount = b"", 0
+    header = query[:2] + struct.pack(">HHHHH", flags, 1, ancount, 0, 0)
+    return header + question + answer
 
-    # Find end of question section
-    _, qend = parse_dns_name(query_data, 12)
-    qsection_end = min(len(query_data), qend + 4)
-    qsection = query_data[12:qsection_end]  # includes QTYPE and QCLASS
 
-    # Answer: Name pointer to question (0xC00C), Type A (1), Class IN (1), TTL 60, Length 4, IP 0.0.0.0
-    answer = b"\xc0\x0c" + b"\x00\x01\x00\x01" + struct.pack(">I", 60) + b"\x00\x04" + b"\x00\x00\x00\x00"
-
-    return tx_id + flags + qdcount + ancount + nscount + arcount + qsection + answer
+def build_servfail(query: bytes) -> bytes:
+    parsed = parse_question(query)
+    if parsed is None:
+        return b""
+    question = query[12:parsed[3]]
+    recursion_desired = query[2] & 0x01
+    flags = 0x8000 | (recursion_desired << 8) | 0x0080 | 0x0002  # RCODE=2 SERVFAIL
+    return query[:2] + struct.pack(">HHHHH", flags, 1, 0, 0, 0) + question
 
 
 class DnsFilterServer:
-    def __init__(self, host: str = "0.0.0.0", port: int = 5353, on_block_callback: Optional[Callable[[str, str], None]] = None):
+    def __init__(
+        self,
+        decide: Callable[[str, str], Decision],
+        host: str = "0.0.0.0",
+        port: int = 5300,
+        upstream: Tuple[str, int] = ("1.1.1.3", 53),
+        on_block: Optional[Callable[[str, str, Decision], None]] = None,
+        allow_public_clients: bool = False,
+        upstream_timeout: float = 2.0,
+        workers: int = 16,
+    ):
+        self.decide = decide
         self.host = host
         self.port = port
-        self.on_block_callback = on_block_callback
+        self.upstream = upstream
+        self.on_block = on_block
+        self.allow_public_clients = allow_public_clients
+        self.upstream_timeout = upstream_timeout
+        self.workers = workers
         self.running = False
+        self.error: Optional[str] = None
         self.sock: Optional[socket.socket] = None
         self.thread: Optional[threading.Thread] = None
-        self.pool: Optional[concurrent.futures.ThreadPoolExecutor] = None
-        self.custom_blocked: Set[str] = set(POPULAR_BLOCKLIST)
+        self._pool: Optional[concurrent.futures.ThreadPoolExecutor] = None
+        self._ready = threading.Event()
+        self._stats_lock = threading.Lock()
+        self.stats: Dict[str, int] = {"queries": 0, "blocked": 0, "upstream_errors": 0, "dropped": 0}
 
-    def is_blocked(self, domain: str) -> bool:
-        if domain in self.custom_blocked:
-            return True
-        for b in self.custom_blocked:
-            if domain.endswith("." + b):
-                return True
-        return False
+    # -- request handling --------------------------------------------------- #
+    def _bump(self, key: str) -> None:
+        with self._stats_lock:
+            self.stats[key] += 1
 
-    def handle_request(self, data: bytes, client_addr: tuple[str, int]) -> None:
+    def _send(self, payload: bytes, addr) -> None:
+        if payload and self.sock:
+            try:
+                self.sock.sendto(payload, addr)
+            except OSError:
+                pass
+
+    def _forward(self, data: bytes) -> Optional[bytes]:
         try:
-            if len(data) < 12:
-                return
-            domain, _ = parse_dns_name(data, 12)
-            if not domain:
-                return
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as upstream:
+                upstream.settimeout(self.upstream_timeout)
+                upstream.sendto(data, self.upstream)
+                while True:
+                    response, source = upstream.recvfrom(4096)
+                    # Ignore anything that isn't the answer to *our* query from the upstream.
+                    if source[0] == self.upstream[0] and response[:2] == data[:2]:
+                        return response
+        except (socket.timeout, OSError):
+            return None
 
-            client_ip = client_addr[0]
-
-            if self.is_blocked(domain):
-                # Sinkhole
-                resp = build_sinkhole_response(data, domain)
-                if self.sock and resp:
-                    self.sock.sendto(resp, client_addr)
-                if self.on_block_callback:
-                    self.on_block_callback(client_ip, domain)
-            else:
-                # Forward to upstream secure DNS
-                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as upstream_sock:
-                    upstream_sock.settimeout(2.0)
-                    upstream_sock.sendto(data, DEFAULT_UPSTREAM_DNS)
-                    upstream_resp, _ = upstream_sock.recvfrom(4096)
-                    if self.sock:
-                        self.sock.sendto(upstream_resp, client_addr)
+    def handle_request(self, data: bytes, addr) -> None:
+        try:
+            client_ip = addr[0]
+            if not self.allow_public_clients and not security.is_lan_client(client_ip):
+                self._bump("dropped")
+                return
+            if len(data) < 12 or data[2] & 0x80:  # too short, or a *response* (never answer those)
+                return
+            parsed = parse_question(data)
+            if parsed is None:
+                return
+            qname, qtype, _qclass, _end = parsed
+            self._bump("queries")
+            decision = self.decide(client_ip, qname)
+            if decision.blocked:
+                self._bump("blocked")
+                self._send(build_blocked_response(data, qtype), addr)
+                if self.on_block:
+                    try:
+                        self.on_block(client_ip, qname, decision)
+                    except Exception:  # never let telemetry break resolution
+                        log.exception("DNS block callback failed")
+                return
+            response = self._forward(data)
+            if response is None:
+                self._bump("upstream_errors")
+                response = build_servfail(data)
+            self._send(response, addr)
         except Exception:
-            pass
+            log.debug("DNS request handling error", exc_info=True)
 
+    # -- lifecycle ---------------------------------------------------------- #
     def run(self) -> None:
         try:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            try:
-                self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            except Exception:
-                pass
             self.sock.bind((self.host, self.port))
+            self.port = self.sock.getsockname()[1]
             self.sock.settimeout(1.0)
             self.running = True
-            self.pool = concurrent.futures.ThreadPoolExecutor(max_workers=16)
-
+            self._pool = concurrent.futures.ThreadPoolExecutor(max_workers=self.workers, thread_name_prefix="dns")
+        except OSError as exc:
+            self.error = str(exc)
+            log.warning("DNS filter could not bind %s:%s (%s). Website filtering via hub DNS is disabled.", self.host, self.port, exc)
+            self._ready.set()
+            if self.sock:
+                self.sock.close()
+            return
+        self._ready.set()
+        log.info("DNS filter listening on UDP %s:%s (upstream %s:%s)", self.host, self.port, *self.upstream)
+        try:
             while self.running:
                 try:
                     data, addr = self.sock.recvfrom(4096)
-                    if self.pool and self.running:
-                        self.pool.submit(self.handle_request, data, addr)
                 except socket.timeout:
                     continue
-                except Exception:
+                except ConnectionResetError:  # Windows reports ICMP port-unreachable this way
+                    continue
+                except OSError:
                     break
-        except Exception as e:
-            print(f"[DNS Engine] Notice: Could not bind DNS on {self.host}:{self.port} ({e})")
+                if self._pool and self.running:
+                    self._pool.submit(self.handle_request, data, addr)
         finally:
-            if self.pool:
-                self.pool.shutdown(wait=False)
-            if self.sock:
-                try:
-                    self.sock.close()
-                except Exception:
-                    pass
+            self.running = False
+            if self._pool:
+                self._pool.shutdown(wait=False)
+            try:
+                self.sock.close()
+            except OSError:
+                pass
 
-    def start(self) -> None:
-        self.thread = threading.Thread(target=self.run, daemon=True)
+    def start(self, wait: float = 1.5) -> bool:
+        self.thread = threading.Thread(target=self.run, name="himaya-dns", daemon=True)
         self.thread.start()
+        self._ready.wait(wait)
+        return self.running
 
     def stop(self) -> None:
         self.running = False
         if self.thread and self.thread.is_alive():
-            self.thread.join(timeout=1.0)
+            self.thread.join(timeout=2.0)
+
+    def status(self) -> Dict[str, object]:
+        with self._stats_lock:
+            stats = dict(self.stats)
+        return {"running": self.running, "port": self.port, "upstream": f"{self.upstream[0]}:{self.upstream[1]}", "error": self.error, **stats}

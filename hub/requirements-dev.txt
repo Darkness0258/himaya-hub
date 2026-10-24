@@ -1,0 +1,8 @@
+# Test / development tools (not needed to run the hub)
+-r requirements.txt
+pytest>=8.0
+httpx>=0.27          # FastAPI's TestClient
+dnspython>=2.6       # lets the tests parse the DNS packets the hub builds
+requests>=2.31       # agent tests talk to a real hub over HTTP
+pystray>=0.19        # optional: only to import the Windows agent's tray code
+pillow>=10.0

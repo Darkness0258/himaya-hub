@@ -1,68 +1,238 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/main_layout"
-    android:orientation="vertical"
-    android:padding="24dp"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:fillViewport="true">
 
-    <!-- Status indicator -->
-    <TextView
-        android:id="@+id/tvStatus"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="24sp"
-        android:textColor="#2E7D32"
-        android:layout_marginBottom="32dp"
-        android:text="Himaya Agent" />
-
-    <!-- Hub URL -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Hub URL"
-        android:textStyle="bold"
-        android:layout_marginBottom="4dp" />
-    <EditText
-        android:id="@+id/etHubUrl"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="http://192.168.1.100:8000"
-        android:inputType="textUri"
-        android:layout_marginBottom="16dp" />
+        android:orientation="vertical"
+        android:padding="20dp">
 
-    <!-- Device ID -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Device ID"
-        android:textStyle="bold"
-        android:layout_marginBottom="4dp" />
-    <EditText
-        android:id="@+id/etDeviceId"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="android-001"
-        android:inputType="text"
-        android:layout_marginBottom="24dp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Himaya"
+            android:textColor="@color/text_primary"
+            android:textSize="28sp"
+            android:textStyle="bold" />
 
-    <!-- Buttons -->
-    <Button
-        android:id="@+id/btnEnable"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Enable Agent" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_status"
+            android:orientation="vertical"
+            android:padding="20dp">
 
-    <Button
-        android:id="@+id/btnDisable"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Disable Agent" />
+            <TextView
+                android:id="@+id/statusTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/status_text"
+                android:textSize="24sp"
+                android:textStyle="bold" />
 
-    <Button
-        android:id="@+id/btnEnableVpn"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Prepare VPN" />
+            <TextView
+                android:id="@+id/statusDetail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textColor="@color/status_muted"
+                android:textSize="15sp" />
+        </LinearLayout>
 
-</LinearLayout>
+        <TextView
+            style="@style/Himaya.SectionTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="1. Connect to your hub" />
+
+        <LinearLayout
+            android:id="@+id/connectGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                style="@style/Himaya.Body"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Open the Enroll page of the Himaya dashboard. It shows the hub address and a 6-digit PIN." />
+
+            <EditText
+                android:id="@+id/hubInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="Hub address, like 192.168.1.20:8000"
+                android:importantForAutofill="no"
+                android:inputType="textUri"
+                android:minHeight="48dp"
+                android:singleLine="true" />
+
+            <EditText
+                android:id="@+id/pinInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="6-digit PIN"
+                android:importantForAutofill="no"
+                android:imeOptions="actionDone"
+                android:inputType="number"
+                android:maxLength="6"
+                android:minHeight="48dp"
+                android:singleLine="true" />
+
+            <EditText
+                android:id="@+id/nameInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Name of this phone"
+                android:importantForAutofill="no"
+                android:inputType="textCapWords"
+                android:maxLength="80"
+                android:minHeight="48dp"
+                android:singleLine="true" />
+
+            <RadioGroup
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="vertical">
+
+                <RadioButton
+                    android:id="@+id/ownerChild"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    android:minHeight="48dp"
+                    android:text="A child uses this phone"
+                    android:textColor="@color/text_primary" />
+
+                <RadioButton
+                    android:id="@+id/ownerAdult"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
+                    android:text="An adult uses this phone (and agrees)"
+                    android:textColor="@color/text_primary" />
+            </RadioGroup>
+
+            <TextView
+                android:id="@+id/connectError"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/error"
+                android:textSize="14sp" />
+
+            <Button
+                android:id="@+id/connectButton"
+                style="@style/Widget.AppCompat.Button.Colored"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:minHeight="52dp"
+                android:text="Connect" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/connectedGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/connectedInfo"
+                style="@style/Himaya.Body"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <Button
+                android:id="@+id/disconnectButton"
+                style="@style/Widget.AppCompat.Button.Borderless.Colored"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:minHeight="48dp"
+                android:text="Disconnect this phone" />
+        </LinearLayout>
+
+        <TextView
+            style="@style/Himaya.SectionTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="2. Switch on protection" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:id="@+id/adminStatus"
+                style="@style/Himaya.Body"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <Button
+                android:id="@+id/adminButton"
+                style="@style/Widget.AppCompat.Button.Borderless.Colored"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Turn on lock and erase" />
+
+            <TextView
+                android:id="@+id/notifStatus"
+                style="@style/Himaya.Body"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp" />
+
+            <Button
+                android:id="@+id/notifButton"
+                style="@style/Widget.AppCompat.Button.Borderless.Colored"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Allow notifications" />
+
+            <TextView
+                android:id="@+id/filterStatus"
+                style="@style/Himaya.Body"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp" />
+
+            <Switch
+                android:id="@+id/filterSwitch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Filter websites through the hub"
+                android:textColor="@color/text_primary" />
+        </LinearLayout>
+
+        <TextView
+            style="@style/Himaya.SectionTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="What Himaya does on this phone" />
+
+        <TextView
+            style="@style/Himaya.Body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            android:text="Himaya is always visible: a notification stays on screen while it runs.\n\nYour parent can lock the phone, send you a message, pause the internet, and block websites they chose. If they ask to see your screen, you are asked to allow it each time.\n\nIt never records what you type, uses the camera or microphone, or reads your private messages." />
+    </LinearLayout>
+</ScrollView>

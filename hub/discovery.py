@@ -1,128 +1,140 @@
-"""Himaya Auto-Discovery & Network Enrollment Service.
+"""Hub discovery: lets agents on the same Wi-Fi find the hub's address.
 
-- Discovers LAN IP and external Public IP
-- Runs UDP beacon & discovery responder on port 5354 so real devices on Wi-Fi auto-pair
-- Generates 6-digit Quick Pairing PINs and QR codes for zero-touch enrollment
+Security note
+-------------
+The first version of this beacon **replied with the pairing PIN** to anyone who
+sent a UDP probe, which made the PIN worthless. Discovery now only reveals the
+hub's *address*; authorisation still requires the PIN typed by a person.
 """
 from __future__ import annotations
+
 import json
-import secrets
+import logging
+import os
 import socket
 import threading
 import time
+import urllib.request
 from typing import Optional
 
-DISCOVERY_PORT = 5354
-_cached_lan_ip: Optional[str] = None
-_active_pin: str = "842019"
+import config
+import security
 
+log = logging.getLogger("himaya.discovery")
 
-_cached_public_ip: Optional[str] = None
-_cached_public_ip_time: float = 0.0
+_lan_cache = {"ip": None, "at": 0.0}
+_public_cache = {"ip": None, "at": 0.0}
 
 
 def get_lan_ip() -> str:
-    global _cached_lan_ip
-    if _cached_lan_ip:
-        return _cached_lan_ip
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            s.connect(("8.8.8.8", 80))
-            ip = s.getsockname()[0]
-            _cached_lan_ip = ip
-            return ip
-    except Exception:
-        return "127.0.0.1"
+    """The hub machine's LAN address (cached for a minute).
 
-
-def get_public_ip() -> str:
-    global _cached_public_ip, _cached_public_ip_time
+    Inside Docker this is the container's bridge IP. Set ``HIMAYA_LAN_IP`` to the
+    host's real LAN address in that case.
+    """
+    override = os.environ.get("HIMAYA_LAN_IP", "").strip()
+    if override:
+        return override
     now = time.time()
-    if _cached_public_ip and (now - _cached_public_ip_time < 300):
-        return _cached_public_ip
+    if _lan_cache["ip"] and now - _lan_cache["at"] < 60:
+        return _lan_cache["ip"]
+    ip = "127.0.0.1"
     try:
-        import requests
-        res = requests.get("https://api.ipify.org", timeout=2)
-        if res.ok:
-            _cached_public_ip = res.text.strip()
-            _cached_public_ip_time = now
-            return _cached_public_ip
-    except Exception:
+        # UDP "connect" sends no packets; it only asks the OS which interface it would use.
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("8.8.8.8", 80))
+            ip = sock.getsockname()[0]
+    except OSError:
         pass
-    if _cached_public_ip:
-        return _cached_public_ip
-    return get_lan_ip()
+    _lan_cache.update(ip=ip, at=now)
+    return ip
 
 
-def get_enrollment_pin() -> str:
-    global _active_pin
-    return _active_pin
-
-
-def regenerate_enrollment_pin() -> str:
-    global _active_pin
-    # Use secrets for cryptographically secure PIN generation
-    _active_pin = f"{secrets.randbelow(900000) + 100000:06d}"
-    return _active_pin
+def get_public_ip(timeout: float = 2.0) -> Optional[str]:
+    """Public IP via a third-party service. Off by default (``HIMAYA_LOOKUP_PUBLIC_IP``)."""
+    now = time.time()
+    if _public_cache["ip"] and now - _public_cache["at"] < 600:
+        return _public_cache["ip"]
+    try:
+        with urllib.request.urlopen("https://api.ipify.org", timeout=timeout) as response:  # noqa: S310 - fixed https URL
+            ip = response.read().decode("ascii", "ignore").strip()
+        if ip:
+            _public_cache.update(ip=ip, at=now)
+            return ip
+    except (OSError, ValueError):
+        pass
+    return _public_cache["ip"]
 
 
 class DiscoveryServer:
-    """UDP Auto-Discovery Responder for LAN agents."""
+    """Answers ``HIMAYA_DISCOVER`` UDP probes from LAN clients."""
 
-    def __init__(self, http_port: int = 8000):
+    def __init__(self, http_port: int, port: int = 5354, dns_port: Optional[int] = None):
         self.http_port = http_port
+        self.port = port
+        self.dns_port = dns_port
         self.running = False
+        self.error: Optional[str] = None
         self.sock: Optional[socket.socket] = None
         self.thread: Optional[threading.Thread] = None
+        self._ready = threading.Event()
 
-    def start(self):
-        self.running = True
-        self.thread = threading.Thread(target=self._run, daemon=True)
-        self.thread.start()
+    def reply_payload(self) -> bytes:
+        lan_ip = get_lan_ip()
+        return json.dumps(
+            {
+                "type": "himaya_hub_info",
+                "hub_url": f"http://{lan_ip}:{self.http_port}",
+                "lan_ip": lan_ip,
+                "http_port": self.http_port,
+                "dns_port": self.dns_port,
+                "hub_name": "Himaya Safety Hub",
+                "version": config.VERSION,
+            }
+        ).encode("utf-8")
 
-    def _run(self):
+    def _run(self) -> None:
         try:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            try:
-                self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            except Exception:
-                pass
-            self.sock.bind(("", DISCOVERY_PORT))
-            self.sock.settimeout(2.0)
-            print(f"[Auto-Discovery] Listening for real device probes on UDP port {DISCOVERY_PORT}")
-
-            lan_ip = get_lan_ip()
-            hub_url = f"http://{lan_ip}:{self.http_port}"
-
+            self.sock.bind(("", self.port))
+            self.sock.settimeout(1.0)
+            self.running = True
+        except OSError as exc:
+            self.error = str(exc)
+            log.warning("Discovery beacon could not bind UDP %s (%s). Agents will need the hub URL typed in.", self.port, exc)
+            self._ready.set()
+            return
+        self._ready.set()
+        log.info("Discovery beacon listening on UDP %s", self.port)
+        try:
             while self.running:
                 try:
                     data, addr = self.sock.recvfrom(1024)
-                    msg = data.decode("utf-8", errors="ignore").strip()
-
-                    if "HIMAYA_DISCOVER" in msg:
-                        # Real agent on Wi-Fi is asking for the Hub!
-                        response_payload = {
-                            "type": "himaya_hub_info",
-                            "hub_url": hub_url,
-                            "lan_ip": lan_ip,
-                            "http_port": self.http_port,
-                            "hub_name": "Himaya Safety Hub",
-                            "pin": get_enrollment_pin()
-                        }
-                        reply_bytes = json.dumps(response_payload).encode("utf-8")
-                        self.sock.sendto(reply_bytes, addr)
-                        print(f"[Auto-Discovery] Auto-pairing response sent to {addr[0]}")
                 except socket.timeout:
                     continue
-                except Exception:
+                except ConnectionResetError:  # Windows: ICMP unreachable after a previous reply
+                    continue
+                except OSError:
                     break
-        except Exception as e:
-            print(f"[Auto-Discovery] Notice: Could not bind discovery port {DISCOVERY_PORT}: {e}")
+                if b"HIMAYA_DISCOVER" in data and security.is_lan_client(addr[0]):
+                    try:
+                        self.sock.sendto(self.reply_payload(), addr)
+                    except OSError:
+                        pass
         finally:
-            if self.sock:
+            self.running = False
+            try:
                 self.sock.close()
+            except OSError:
+                pass
 
-    def stop(self):
+    def start(self, wait: float = 1.5) -> bool:
+        self.thread = threading.Thread(target=self._run, name="himaya-discovery", daemon=True)
+        self.thread.start()
+        self._ready.wait(wait)
+        return self.running
+
+    def stop(self) -> None:
         self.running = False
         if self.thread and self.thread.is_alive():
-            self.thread.join(timeout=1.0)
+            self.thread.join(timeout=2.0)

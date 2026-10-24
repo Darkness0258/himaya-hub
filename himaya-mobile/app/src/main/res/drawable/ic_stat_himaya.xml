@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notification icon: Android uses only the shape (alpha), so it is a plain white eight-point star. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12.00,1.80 L14.07,7.01 L19.21,4.79 L16.99,9.93 L22.20,12.00 L16.99,14.07 L19.21,19.21 L14.07,16.99 L12.00,22.20 L9.93,16.99 L4.79,19.21 L7.01,14.07 L1.80,12.00 L7.01,9.93 L4.79,4.79 L9.93,7.01 Z" />
+</vector>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="lapis">#243DA8</color>
+    <color name="lapis_dark">#16225C</color>
+    <color name="gold">#E8C277</color>
+    <color name="ic_launcher_background">#243DA8</color>
+
+    <!-- light theme -->
+    <color name="page">#F3F4FB</color>
+    <color name="card">#FFFFFF</color>
+    <color name="line">#DDE1F1</color>
+    <color name="text_primary">#121A36</color>
+    <color name="text_muted">#4A5578</color>
+    <color name="status_bg">#243DA8</color>
+    <color name="status_text">#FFFFFF</color>
+    <color name="status_muted">#D7DDF5</color>
+    <color name="error">#BF2D39</color>
+    <color name="accent">#3350D8</color>
+</resources>

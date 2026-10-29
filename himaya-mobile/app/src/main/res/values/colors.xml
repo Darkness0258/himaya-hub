@@ -21,6 +21,7 @@
     <color name="status_grad_end">#16225C</color>
     <color name="gold_line">#66E8C277</color>
     <color name="input_bg">#F3F4FB</color>
-    <color name="text_hint">#7A84A8</color>
+    <color name="text_hint">#5B6690</color>
+    <color name="gold_text">#8A6414</color>
     <color name="on_gold">#2A1E05</color>
 </resources>

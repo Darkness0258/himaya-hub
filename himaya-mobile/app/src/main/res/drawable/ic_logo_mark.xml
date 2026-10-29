@@ -3,7 +3,7 @@
     android:width="40dp" android:height="46dp"
     android:viewportWidth="56" android:viewportHeight="66">
     <group android:translateX="-26" android:translateY="-22">
-        <path android:fillColor="#2B3FA0" android:fillAlpha="0.55" android:pathData="M54,24 L80,33 L80,54 C80,70 68,80 54,86 C40,80 28,70 28,54 L28,33 Z"/>
+        <path android:fillColor="#1B2A7A" android:pathData="M54,24 L80,33 L80,54 C80,70 68,80 54,86 C40,80 28,70 28,54 L28,33 Z"/>
         <path android:pathData="M54,24 L80,33 L80,54 C80,70 68,80 54,86 C40,80 28,70 28,54 L28,33 Z" android:strokeWidth="2.6" android:strokeLineJoin="round">
             <aapt:attr name="android:strokeColor" xmlns:aapt="http://schemas.android.com/aapt">
                 <gradient android:type="linear" android:startX="30" android:startY="24" android:endX="78" android:endY="86">

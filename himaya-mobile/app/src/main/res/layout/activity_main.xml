@@ -42,7 +42,7 @@
                     android:layout_height="wrap_content"
                     android:letterSpacing="0.18"
                     android:text="YOUR FAMILY'S SHIELD"
-                    android:textColor="@color/gold"
+                    android:textColor="@color/gold_text"
                     android:textSize="10sp" />
             </LinearLayout>
         </LinearLayout>

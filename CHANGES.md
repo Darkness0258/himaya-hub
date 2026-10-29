@@ -10,15 +10,20 @@ Live view, a tamper-resistance decision with an opt-in Windows hardening script,
 * **`docs/REMOTE-ACCESS.md`**, `docker-compose.https.yml` and `docker/Caddyfile` (HTTPS with an automatic certificate), and `tools/wg_setup.py` (WireGuard configs, pure Python).
 * The Android app refuses an admin or device key typed into the hub address box and clears it. Before, the key was treated as a host name and sent out as a DNS lookup.
 
+* **`tools/smoke_test.py`**: checks any hub from the outside in about ten seconds (health, admin key, database, pairing, heartbeat, screenshot, live view, WebSocket). It pairs a throwaway device and always deletes it, warns about a cloud hub on SQLite, waits for a sleeping free-plan hub to wake, and never prints a key or the PIN.
+* **`docs/TEST-PLAN.md`**: what to test and in which order (hub, then network, then device), what each result means, and what to paste back.
+* **`docs/android-redesign-preview.png`**: a mock render of the new Android icon and main screen, made from the resource files (not a screenshot).
+
 ## Changed
 
 * Windows agent 2.1.0: reports `live_view`; writes its log in the user's own folder when its install folder is read-only.
 * The dashboard shows "Himaya was hardened on this PC" as good news rather than a warning.
 * `.gitignore` covers `wireguard/`.
+* Android light mode: gold text was only about 1.5:1 contrast and unreadable; it now uses a darker gold (all text pairs checked against WCAG AA, 4.5:1). The header logo's shield is now solid so the gold star reads on both themes.
 
 ## Verified
 
-* Hub 184 tests, Windows agent 48 tests (including live view against a real hub and read-only install folders), dashboard 52 tests with typecheck and lint: all passing.
+* Hub 200 tests, Windows agent 48 tests (including live view against a real hub and read-only install folders), dashboard 52 tests with typecheck and lint: all passing.
 * `tools/wg_setup.py` key maths against the RFC 7748 vectors and a second crypto library.
 * `docker/Caddyfile` validated with Caddy 2.8. A hub behind Caddy was exercised over HTTPS: pairing, live view, `wss://`, an oversized upload refused, and a forged `X-Forwarded-For` not dodging the login limit.
 * All three PowerShell scripts (installer, uninstaller, `harden.ps1`) parse; `harden.ps1` decision logic ran against stand-ins for the Windows commands.

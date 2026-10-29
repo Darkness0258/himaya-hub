@@ -14,4 +14,5 @@
     <color name="gold_line">#55E8C277</color>
     <color name="input_bg">#0D1330</color>
     <color name="text_hint">#7480AD</color>
+    <color name="gold_text">#E8C277</color>
 </resources>

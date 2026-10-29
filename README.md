@@ -90,6 +90,7 @@ Each device then appears on the Home screen within seconds.
 
 * The parent state (**locked**, **paused**, bedtime) lives on the hub. Agents receive it in every heartbeat and enforce it, so a missed command cannot leave a device out of step.
 * One-off commands (message, screenshot request, close app, erase) go through a queue that hands each command out exactly once.
+* What to test and in which order: [docs/TEST-PLAN.md](docs/TEST-PLAN.md). Quick hub check: `python tools/smoke_test.py <hub address>`.
 * Away from home (HTTPS or WireGuard): [docs/REMOTE-ACCESS.md](docs/REMOTE-ACCESS.md). What each tamper-resistance level stops: [docs/TAMPER-RESISTANCE.md](docs/TAMPER-RESISTANCE.md).
 * Details of every endpoint: [docs/API.md](docs/API.md). Threat model and credentials: [docs/SECURITY.md](docs/SECURITY.md).
 
@@ -136,7 +137,7 @@ hub/             FastAPI hub: API, DNS filter, discovery, storage        (Python
 dashboard/       The parent dashboard (React + TypeScript). Builds into hub/static
 agent-windows/   Windows agent: tray indicator, lock, pause, screenshots (Python)
 himaya-mobile/   Android agent (Kotlin): pairing, DNS-only VPN, lock, messages
-tools/           seed_demo.py (fake data for previews), sync_agent.py, Android contract check
+tools/           seed_demo.py (fake data for previews), sync_agent.py, smoke_test.py (check any hub), wg_setup.py (WireGuard), Android contract check
 docs/            API, security, deployment, Android, design notes
 docker-compose.yml, render.yaml   Deployment
 ```

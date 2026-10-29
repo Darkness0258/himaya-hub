@@ -399,3 +399,124 @@ class TestLifecycle:
         assert agent.main(["--once"]) == 0
         output = json.loads(capsys.readouterr().out)
         assert output["connected"] is True and output["state"]["locked"] is False
+
+
+# --------------------------------------------------------------------------- #
+# Live view: parent-started, short, and announced on the PC
+# --------------------------------------------------------------------------- #
+class TestLiveView:
+    def test_the_agent_announces_that_it_can_do_it(self, enrolled):
+        assert enrolled.core.caps()["live_view"] is True
+
+    def test_full_round_trip_with_the_hub(self, enrolled):
+        core, device_id = enrolled.core, enrolled.device_id
+        core.heartbeat_once()
+        started = enrolled.parent("post", f"/admin/{device_id}/action", json={"action": "live_view", "payload": {"duration_s": 30}})
+        assert started.status_code == 200, started.text
+        core.poll_commands_once()                                   # receives the live_view command
+        assert wait_for(lambda: enrolled.hub.live.get(device_id, {}).get("frames", 0) >= 1, timeout=5)
+        # The parent can see the picture; the person at the PC was told, and the tray shows it.
+        picture = enrolled.parent("get", f"/live/{device_id}")
+        assert picture.status_code == 200 and picture.content[:3] == b"\xff\xd8\xff"
+        assert any("viewing your screen" in message for _, message in enrolled.ui.notifications)
+        assert enrolled.ui.levels[-1][0] == "warn" and "viewing your screen" in enrolled.ui.levels[-1][1]
+        # The parent stops it: the agent stops sending and says so.
+        enrolled.parent("post", f"/admin/{device_id}/action", json={"action": "stop_live_view"})
+        core.poll_commands_once()
+        assert wait_for(lambda: not core.live_active, timeout=5)
+        assert any(message == "Live view ended." for _, message in enrolled.ui.notifications)
+        assert enrolled.ui.levels[-1][0] == "ok"
+
+    def test_it_stops_by_itself_when_the_hub_has_no_session(self, enrolled):
+        core = enrolled.core
+        core.heartbeat_once()
+        assert core.start_live_view(30) is True                      # nobody asked the hub: it answers 409
+        assert wait_for(lambda: not core.live_active, timeout=5)
+        assert enrolled.parent("get", "/snapshots").json() == []   # and nothing was stored
+
+    def test_not_while_locked_or_offline(self, enrolled):
+        core = enrolled.core
+        assert core.start_live_view(30) is False                    # never connected to the hub
+        core.heartbeat_once()
+        core.state["locked"] = True
+        assert core.start_live_view(30) is False and not core.live_active
+        assert enrolled.platform.shots == 0
+
+    def test_only_one_session_at_a_time(self, enrolled):
+        core = enrolled.core
+        core.heartbeat_once()
+        core.live_active = True                                     # one is already running
+        assert core.start_live_view(30) is False
+
+    def test_the_length_is_capped_on_the_pc_too(self, enrolled, monkeypatch):
+        core = enrolled.core
+        core.heartbeat_once()
+        seen = []
+        monkeypatch.setattr(core, "_live_loop", lambda seconds: seen.append(seconds))
+        core.start_live_view(99999)
+        assert wait_for(lambda: seen, timeout=2) and seen == [agent.LIVE_MAX_S]
+        core.live_active = False
+        core.start_live_view(1)
+        assert wait_for(lambda: len(seen) == 2, timeout=2) and seen[1] == agent.LIVE_MIN_S
+
+    def test_shutdown_ends_it(self, enrolled):
+        core = enrolled.core
+        core.heartbeat_once()
+        enrolled.parent("post", f"/admin/{enrolled.device_id}/action", json={"action": "live_view", "payload": {"duration_s": 60}})
+        core.poll_commands_once()
+        assert wait_for(lambda: core.live_active, timeout=3)
+        core.shutdown("test")
+        assert wait_for(lambda: not core.live_active, timeout=5)
+
+
+# --------------------------------------------------------------------------- #
+# Hardened install: the agent folder is read-only for the child
+# --------------------------------------------------------------------------- #
+class TestReadOnlyInstallFolder:
+    @pytest.fixture()
+    def clean_logger(self):
+        import logging
+
+        root = logging.getLogger("himaya")
+        before = list(root.handlers)
+        yield root
+        for handler in list(root.handlers):
+            if handler not in before:
+                handler.close()
+                root.removeHandler(handler)
+
+    def test_log_falls_back_to_the_users_own_folder(self, tmp_path, monkeypatch, clean_logger):
+        blocker = tmp_path / "program_files_himaya"
+        blocker.write_text("this is a file, so nothing can be created inside it")   # stands in for a folder the child cannot write
+        local = tmp_path / "local"
+        monkeypatch.setattr(agent, "LOG_PATH", blocker / "agent.log")
+        monkeypatch.setenv("LOCALAPPDATA", str(local))
+        agent.setup_logging(console=False)
+        clean_logger.info("hello from a hardened install")
+        import logging
+
+        for handler in clean_logger.handlers:
+            if isinstance(handler, logging.FileHandler):   # other tests may have left console handlers behind
+                handler.flush()
+        assert "hello from a hardened install" in (local / "HimayaAgent" / "agent.log").read_text(encoding="utf-8")
+
+    def test_no_writable_place_for_the_log_is_not_fatal(self, tmp_path, monkeypatch, clean_logger):
+        blocker = tmp_path / "blocked"
+        blocker.write_text("x")
+        monkeypatch.setattr(agent, "LOG_PATH", blocker / "agent.log")
+        monkeypatch.delenv("LOCALAPPDATA", raising=False)
+        before = len(clean_logger.handlers)
+        agent.setup_logging(console=False)               # must not raise
+        assert len(clean_logger.handlers) == before
+
+    def test_an_unwritable_config_does_not_break_pausing(self, enrolled, tmp_path):
+        core = enrolled.core
+        blocker = tmp_path / "ro"
+        blocker.write_text("x")
+        core.config_path = blocker / "agent_config.json"  # cannot be written
+        core.save_config()                                 # swallowed, as in a read-only install folder
+        core.heartbeat_once()
+        core.set_proxy_blackhole(True)
+        assert enrolled.platform.proxy["server"] == agent.BLACKHOLE_PROXY
+        core.set_proxy_blackhole(False)
+        assert enrolled.platform.proxy["server"] in (None, "")

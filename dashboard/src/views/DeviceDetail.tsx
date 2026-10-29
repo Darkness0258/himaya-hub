@@ -13,6 +13,7 @@ import { useHub, useRunAction } from '../lib/store'
 import { useToast } from '../lib/toast'
 import type { Device } from '../lib/types'
 import { useSnapshots } from '../lib/useSnapshots'
+import { LiveViewButton, LiveViewDialog } from './LiveView'
 import { RulesEditor } from './RulesEditor'
 
 const TABS: { id: DeviceTab; label: string }[] = [
@@ -382,6 +383,7 @@ export function DeviceDetail({ device }: { device: Device }) {
   const [busy, setBusy] = useState('')
   const [messageOpen, setMessageOpen] = useState(false)
   const [closeOpen, setCloseOpen] = useState(false)
+  const [liveOpen, setLiveOpen] = useState(false)
   const offline = device.status === 'offline'
   const later = offline ? ' It takes effect when the device is back online.' : ''
 
@@ -421,6 +423,7 @@ export function DeviceDetail({ device }: { device: Device }) {
         <Button busy={busy === 'snapshot'} icon={<Camera size={17} aria-hidden="true" />} onClick={() => act('snapshot', 'snapshot', device.platform === 'android' ? 'Asked the phone. The child has to approve it.' : 'Screenshot requested.')}>
           Screenshot now
         </Button>
+        <LiveViewButton device={device} onOpen={() => setLiveOpen(true)} />
         <Button variant="ghost" icon={<X size={17} aria-hidden="true" />} onClick={() => setCloseOpen(true)}>
           Close an app
         </Button>
@@ -442,6 +445,7 @@ export function DeviceDetail({ device }: { device: Device }) {
 
       <MessageDialog device={device} open={messageOpen} onClose={() => setMessageOpen(false)} />
       <CloseAppDialog device={device} open={closeOpen} onClose={() => setCloseOpen(false)} />
+      <LiveViewDialog device={device} open={liveOpen} onClose={() => setLiveOpen(false)} />
     </article>
   )
 }

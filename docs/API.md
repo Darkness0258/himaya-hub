@@ -23,6 +23,7 @@ Ten wrong keys from one address in a minute lock that address out for a minute (
 | `GET /enroll/win/agent.py`, `GET /enroll/win/uninstall.ps1` | Files the installer downloads. |
 | `GET /enroll/mobile` | A small page for phones, with a strict CSP. It never contains the PIN. |
 | `GET /enroll/qr?kind=lan\|internet` | PNG QR code of the phone page. |
+| `GET /live/<device>?exp=&sig=` | The latest live view picture (a JPEG), through a signed link from the `live_view` action. The admin key also works. `404` until the first picture. Never cached. |
 | `GET /snapshots/<device>/<file>?exp=&sig=` | A screenshot, through a signed link valid for 15 minutes. The admin key also works. |
 
 ## Parent
@@ -56,6 +57,8 @@ Ten wrong keys from one address in a minute lock that address out for a minute (
 | `push_notification` | A message on the screen. | `{"message": "...", max 500}` |
 | `force_close_app` | Close a program or background app. | `{"app": "chrome"}` |
 | `snapshot` | Ask for a screenshot (Android asks the child to approve). | none |
+| `live_view` | Start a short live view (Windows agent). Answers `{"live":{"duration_s","url"}}`. `400` if the device cannot do it, `409` if it is offline, locked, or has screenshots turned off. The child is told on screen. | `duration_s` 10 to 120 (default 60) |
+| `stop_live_view` | End it now. Harmless if none is running. | none |
 | `wipe` | Erase an Android phone. | `{"confirm": "<device_id>"}`; anything else is `400` |
 
 ## Agent
@@ -69,6 +72,7 @@ All under `/agents/<device_id>/` with the device key.
 | `POST dns-block` | `{"host"}` | `{"status":"ok"}` |
 | `POST vpn-attempt` | `{"interface"}` | `{"status":"ok"}` |
 | `POST event` | `{"type":"agent_stopped\|enforcement_notice","data":{...}}` | `{"status":"ok"}` |
+| `POST live-frame` | multipart field `file`, a JPEG. Only accepted while a parent-started live view is open (`409` otherwise, which tells the agent to stop). At most about 2 per second (`429`). Held in memory only. | `{"status","remaining_s"}` |
 | `POST snapshot` | multipart field `file`, a JPEG up to 6 MB | `{"snapshot":{...,"url"}}` |
 
 For compatibility the hub still accepts `ip`, `host` and `interface` as query parameters.
@@ -85,4 +89,4 @@ For compatibility the hub still accepts `ip`, `host` and `interface` as query pa
 
 ## Event types
 
-`dns_block`, `vpn_attempt`, `device_went_dark`, `device_online`, `device_paired`, `device_locked`, `device_unlocked`, `remote_action`, `policy_sync`, `screenshot`, `agent_stopped`, `enforcement_notice`. Heartbeats are live-only and never stored.
+`dns_block`, `vpn_attempt`, `device_went_dark`, `device_online`, `device_paired`, `device_locked`, `device_unlocked`, `remote_action`, `policy_sync`, `screenshot`, `live_started`, `live_ended`, `agent_stopped`, `enforcement_notice`. Heartbeats are live-only and never stored.

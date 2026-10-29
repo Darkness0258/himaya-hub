@@ -50,11 +50,13 @@ Notes:
 
 ## Reaching the hub away from home
 
-Phones and laptops leave your Wi-Fi. Options, best first:
+Phones and laptops leave your Wi-Fi. The full guide is [REMOTE-ACCESS.md](REMOTE-ACCESS.md). In short:
 
-1. **WireGuard** (or Tailscale) to your home network. The hub gets a private address; paste it in **Settings, Away from home**.
-2. A **dynamic DNS name** (DuckDNS) with HTTPS through a reverse proxy (Caddy is the easiest). Do not expose plain HTTP.
-3. A cloud hub (above).
+1. **HTTPS with Caddy** and a DuckDNS name: `docker compose -f docker-compose.yml -f docker-compose.https.yml up -d`. Best for children's Android phones, because a phone can run only one VPN and Himaya's website filter uses it.
+2. **WireGuard** (`python tools/wg_setup.py`) for PCs and the parent's own devices.
+3. A cloud hub (above), or Cloudflare Tunnel, if your ISP does not let you open ports (CGNAT).
+
+Never forward port 8000 or 5300 to the internet.
 
 Once a public address is saved, **Add a device** offers both addresses and the installer lists both, trying the Wi-Fi one first.
 

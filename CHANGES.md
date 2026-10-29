@@ -1,3 +1,37 @@
+# Unreleased (on top of 2.0.0)
+
+Live view, a tamper-resistance decision with an opt-in Windows hardening script, and a guide for reaching the hub away from home. **Nothing here has been run on a real Windows PC or built for Android yet** (see "Verified" below).
+
+## Added
+
+* **Live view (Windows).** The parent starts it from the device page (`Live view`). The agent sends a small picture about once a second for up to two minutes. It follows the screenshot consent rule (screenshots off means live view off), is refused while the device is offline or locked, shows a notice and a changed tray icon on the PC, is held in the hub's memory only, and is recorded as `live_started` / `live_ended`. Hub: `live_view` and `stop_live_view` actions, `POST /agents/<id>/live-frame`, `GET /live/<id>`.
+* **`docs/TAMPER-RESISTANCE.md`**: the decision (evident by default, hardened opt-in, a Windows service not built, and why), what each level stops, and how to apply it.
+* **`agent-windows/harden.ps1`** (opt-in, run by the parent as Administrator): moves the agent to `C:\Program Files\Himaya`, locks it, and starts it from a Task Scheduler job that returns within 5 minutes if closed. Has `-DryRun` and `-Remove`.
+* **`docs/REMOTE-ACCESS.md`**, `docker-compose.https.yml` and `docker/Caddyfile` (HTTPS with an automatic certificate), and `tools/wg_setup.py` (WireGuard configs, pure Python).
+* The Android app refuses an admin or device key typed into the hub address box and clears it. Before, the key was treated as a host name and sent out as a DNS lookup.
+
+## Changed
+
+* Windows agent 2.1.0: reports `live_view`; writes its log in the user's own folder when its install folder is read-only.
+* The dashboard shows "Himaya was hardened on this PC" as good news rather than a warning.
+* `.gitignore` covers `wireguard/`.
+
+## Verified
+
+* Hub 184 tests, Windows agent 48 tests (including live view against a real hub and read-only install folders), dashboard 52 tests with typecheck and lint: all passing.
+* `tools/wg_setup.py` key maths against the RFC 7748 vectors and a second crypto library.
+* `docker/Caddyfile` validated with Caddy 2.8. A hub behind Caddy was exercised over HTTPS: pairing, live view, `wss://`, an oversized upload refused, and a forged `X-Forwarded-For` not dodging the login limit.
+* All three PowerShell scripts (installer, uninstaller, `harden.ps1`) parse; `harden.ps1` decision logic ran against stand-ins for the Windows commands.
+* The new Android key guard compiles under `kotlinc` and passes its checks.
+
+## Not verified
+
+* Android: the `MainActivity` edit and the new resources need your Android Studio build. Live view is **not** built for Android.
+* `harden.ps1` on a real Windows PC. Live view on a real Windows desktop.
+* The Let's Encrypt certificate step (needs a real domain), a WireGuard tunnel end to end, Docker/Render.
+
+---
+
 # What changed in this version (2.0.0)
 
 This release finishes the product and fixes what stopped the first version from working end to end. Everything below was found by reading the code and then running it; where something could **not** be run in the environment used to produce this release, it says so.

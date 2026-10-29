@@ -81,7 +81,7 @@ class FakePlatform:
 
     def list_vpn_adapters(self): return list(self.vpns)
 
-    def grab_screenshot_jpeg(self):
+    def grab_screenshot_jpeg(self, quality=55, max_width=1280):
         from PIL import Image
         self.shots += 1
         buffer = io.BytesIO()

@@ -1,14 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Launcher icon foreground: the khatam star, kept inside the 66dp safe zone of the 108dp adaptive canvas. -->
+<!-- Shield (protection) holding the khatam star. Inside the 66dp safe zone of the 108dp adaptive canvas. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <path
-        android:fillColor="#E8C277"
-        android:pathData="M54.00,26.00 L59.63,40.42 L73.80,34.20 L67.58,48.37 L82.00,54.00 L67.58,59.63 L73.80,73.80 L59.63,67.58 L54.00,82.00 L48.37,67.58 L34.20,73.80 L40.42,59.63 L26.00,54.00 L40.42,48.37 L34.20,34.20 L48.37,40.42 Z" />
-    <path
-        android:fillColor="#16225C"
-        android:pathData="M48.20,54.00 a5.80,5.80 0 1,0 11.60,0 a5.80,5.80 0 1,0 -11.60,0 Z" />
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#2B3FA0" android:fillAlpha="0.55" android:pathData="M54,24 L80,33 L80,54 C80,70 68,80 54,86 C40,80 28,70 28,54 L28,33 Z"/>
+    <path android:pathData="M54,24 L80,33 L80,54 C80,70 68,80 54,86 C40,80 28,70 28,54 L28,33 Z" android:strokeWidth="2.6" android:strokeLineJoin="round">
+        <aapt:attr name="android:strokeColor" xmlns:aapt="http://schemas.android.com/aapt">
+            <gradient android:type="linear" android:startX="30" android:startY="24" android:endX="78" android:endY="86">
+                <item android:offset="0" android:color="#F7E2A8"/>
+                <item android:offset="1" android:color="#C9963F"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M54.00,38.00 L57.56,46.41 L66.02,42.98 L62.59,51.44 L71.00,55.00 L62.59,58.56 L66.02,67.02 L57.56,63.59 L54.00,72.00 L50.44,63.59 L41.98,67.02 L45.41,58.56 L37.00,55.00 L45.41,51.44 L41.98,42.98 L50.44,46.41 Z">
+        <aapt:attr name="android:fillColor" xmlns:aapt="http://schemas.android.com/aapt">
+            <gradient android:type="linear" android:startX="30" android:startY="24" android:endX="78" android:endY="86">
+                <item android:offset="0" android:color="#F7E2A8"/>
+                <item android:offset="1" android:color="#C9963F"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:fillColor="#16225C" android:pathData="M54,55 m-3.4,0 a3.4,3.4 0 1,0 6.8,0 a3.4,3.4 0 1,0 -6.8,0 Z"/>
 </vector>

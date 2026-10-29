@@ -181,3 +181,25 @@ describe('groupEvents', () => {
     expect(groupSummary(group).detail).toBe('a.com, b.com, c.com and 2 more')
   })
 })
+
+
+describe('live view and hardening events', () => {
+  it('describes a live view in plain words', () => {
+    expect(eventView(event('live_started', { data: { duration_s: 60 } }))).toMatchObject({ title: 'Live view started', detail: 'Up to 60 seconds' })
+    expect(eventView(event('live_ended', { data: { reason: 'time ran out' } }))).toMatchObject({ title: 'Live view ended', detail: 'Time ran out' })
+  })
+
+  it('treats a hardening notice as good news, not a problem', () => {
+    const notice = event('enforcement_notice', { data: { kind: 'hardened', message: 'An administrator hardened Himaya.' } })
+    expect(eventView(notice)).toMatchObject({ tone: 'ok', title: 'Himaya was hardened on this PC' })
+    expect(needsAttention([notice], [device()], NOW)).toEqual([])
+    const real = event('enforcement_notice', { data: { message: 'Could not pause.' } })
+    expect(needsAttention([real], [device()], NOW)).toHaveLength(1)
+  })
+
+  it('lists live view in the Windows capability notes only when the agent can do it', () => {
+    const labels = (caps: Device['caps']) => capabilityNotes(device({ caps })).filter((n) => n.label === 'Live view').map((n) => n.status)
+    expect(labels({ live_view: true })).toEqual(['yes'])
+    expect(labels({})).toEqual(['no'])
+  })
+})

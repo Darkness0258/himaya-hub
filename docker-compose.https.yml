@@ -1,0 +1,31 @@
+# Himaya: add HTTPS (automatic certificate) in front of the hub.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.https.yml up -d
+#
+# Needs HIMAYA_DOMAIN in .env and your router forwarding TCP 80 and 443 to this computer.
+# Read docs/REMOTE-ACCESS.md first. Do not forward port 8000 or 5300 to the internet.
+services:
+  caddy:
+    image: caddy:2
+    container_name: himaya-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"     # needed to get and renew the certificate
+      - "443:443"
+    environment:
+      HIMAYA_DOMAIN: "${HIMAYA_DOMAIN:?Set HIMAYA_DOMAIN in .env, for example home.duckdns.org}"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data        # the certificate lives here: keep it
+      - caddy-config:/config
+    depends_on:
+      - himaya-hub
+
+  himaya-hub:
+    environment:
+      HIMAYA_PUBLIC_URL: "https://${HIMAYA_DOMAIN}"   # the address shown on the Enroll page "away from home"
+      HIMAYA_TRUST_PROXY: "1"                          # read the real visitor address that Caddy sets
+
+volumes:
+  caddy-data:
+  caddy-config:

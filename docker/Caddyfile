@@ -1,0 +1,22 @@
+# Himaya: HTTPS in front of the hub, with a free certificate that renews itself.
+# Used by docker-compose.https.yml. Read docs/REMOTE-ACCESS.md first.
+#
+# You need: a name that points at your home's public IP (for example home.duckdns.org) and your router
+# forwarding TCP 80 and 443 to this computer. Do NOT forward 8000 or 5300.
+{$HIMAYA_DOMAIN} {
+	encode zstd gzip
+
+	# A screenshot is at most 6 MB; nothing legitimate is bigger than this.
+	request_body {
+		max_size 8MB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+
+	# The hub still checks every key and applies its own limits; this only adds encryption.
+	reverse_proxy himaya-hub:8000
+}

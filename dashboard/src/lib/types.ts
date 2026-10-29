@@ -129,6 +129,8 @@ export type RemoteAction =
   | 'push_notification'
   | 'force_close_app'
   | 'snapshot'
+  | 'live_view'
+  | 'stop_live_view'
   | 'wipe'
 
 export type WsMessage =

@@ -129,7 +129,7 @@ export const api = {
   rules: (id: string) => request<Rules>(`/rules/${id}`),
   saveRules: (id: string, patch: RulesPatch) => request<Rules>(`/rules/${id}`, { method: 'POST', json: patch }),
   action: (id: string, action: RemoteAction, payload: Record<string, unknown> = {}) =>
-    request<{ status: string; device: Device }>(`/admin/${id}/action`, { method: 'POST', json: { action, payload } }),
+    request<{ status: string; device: Device; live?: { duration_s: number; url: string } }>(`/admin/${id}/action`, { method: 'POST', json: { action, payload } }),
   renameDevice: (id: string, patch: { name?: string; owner_type?: 'child' | 'adult' }) =>
     request<Device>(`/devices/${id}`, { method: 'PATCH', json: patch }),
   deleteDevice: (id: string) => request<{ status: string }>(`/devices/${id}`, { method: 'DELETE' }),

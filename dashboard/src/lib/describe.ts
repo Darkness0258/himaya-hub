@@ -84,6 +84,10 @@ export function eventView(event: HubEvent, labels: Record<string, string> = {}):
       return { icon: 'unlock', tone: 'info', title: 'Screen unlocked' }
     case 'screenshot':
       return { icon: 'camera', tone: 'neutral', title: 'Screenshot captured' }
+    case 'live_started':
+      return { icon: 'camera', tone: 'info', title: 'Live view started', detail: typeof d.duration_s === 'number' ? `Up to ${d.duration_s} seconds` : undefined }
+    case 'live_ended':
+      return { icon: 'camera', tone: 'neutral', title: 'Live view ended', detail: text(d.reason) ? text(d.reason).replace(/^./, (c) => c.toUpperCase()) : undefined }
     case 'policy_sync': {
       const changed = changedSummary(d.changed)
       return { icon: 'rules', tone: 'neutral', title: 'Rules updated', detail: changed ? `Changed: ${changed}` : undefined }
@@ -93,6 +97,8 @@ export function eventView(event: HubEvent, labels: Record<string, string> = {}):
     case 'agent_stopped':
       return { icon: 'alert', tone: 'bad', title: 'Himaya was stopped on this device', detail: text(d.reason) || undefined }
     case 'enforcement_notice':
+      // A parent hardening the install is good news, not a problem.
+      if (d.kind === 'hardened') return { icon: 'lock', tone: 'ok', title: 'Himaya was hardened on this PC', detail: text(d.message) || undefined }
       return { icon: 'alert', tone: 'warn', title: "Himaya can't enforce a rule here", detail: text(d.message) || undefined }
     case 'remote_action':
       switch (text(d.action)) {
@@ -129,6 +135,7 @@ export function needsAttention(events: HubEvent[], devices: Device[], now: numbe
   const newestFirst = [...events].sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))
   for (const event of newestFirst) {
     if (!ATTENTION_TYPES.has(event.type)) continue
+    if (event.type === 'enforcement_notice' && event.data?.kind === 'hardened') continue
     const stamp = Date.parse(event.timestamp)
     if (Number.isNaN(stamp) || now - stamp > windowMs) continue
     if (event.type === 'device_went_dark' && byId.get(event.device_id)?.status === 'online') continue
@@ -232,6 +239,9 @@ export function capabilityNotes(device: Device, snapshotIntervalS?: number): Cap
         ? { label: 'Website blocking', status: 'yes', note: "Written to the PC's hosts file." }
         : { label: 'Website blocking', status: 'partial', note: 'Needs Administrator rights on the PC, or point its DNS at the hub.' },
       shots,
+      caps.live_view
+        ? { label: 'Live view', status: 'yes', note: 'Up to two minutes at a time. The child sees a notice and the tray icon changes. Nothing is saved.' }
+        : { label: 'Live view', status: 'no', note: 'Update the Himaya agent on this PC to use it.' },
       { label: 'VPN alerts', status: 'yes', note: 'You are told when a VPN adapter comes up.' },
       { label: 'Erase device', status: 'no', note: 'Not available on Windows.' },
     ]

@@ -40,7 +40,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-AGENT_VERSION = "2.0.0"
+AGENT_VERSION = "2.1.0"
 APP_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = APP_DIR / "agent_config.json"
 LOG_PATH = APP_DIR / "agent.log"
@@ -51,6 +51,10 @@ ENFORCE_S = 5
 VPN_CHECK_S = 45
 RULES_REFRESH_S = 300
 DEFAULT_SNAPSHOT_S = 300
+# Live view: short, parent-started, and always announced on this PC.
+LIVE_MIN_S = 10
+LIVE_MAX_S = 120
+LIVE_FRAME_GAP_S = 1.0   # about one picture per second
 BLACKHOLE_PROXY = "127.0.0.1:9"
 HOSTS_START = "# HIMAYA BLOCKLIST START"
 HOSTS_END = "# HIMAYA BLOCKLIST END"
@@ -143,6 +147,16 @@ class HubClient:
     def upload_snapshot(self, jpeg: bytes) -> None:
         response = self._request("POST", f"/agents/{self.device_id}/snapshot", files={"file": ("screen.jpg", jpeg, "image/jpeg")}, timeout=(5, 30))
         response.raise_for_status()
+
+    def upload_live_frame(self, jpeg: bytes) -> bool:
+        """True: keep sending. False: the hub says there is no live view (stopped, timed out, never started)."""
+        response = self._request("POST", f"/agents/{self.device_id}/live-frame", files={"file": ("frame.jpg", jpeg, "image/jpeg")}, timeout=(3, 8))
+        if response.status_code == 409:
+            return False
+        if response.status_code == 429:   # sent a little too fast: not a reason to stop
+            return True
+        response.raise_for_status()
+        return True
 
 
 # --------------------------------------------------------------------------- #
@@ -458,12 +472,14 @@ class AgentCore:
         self.hosts_enabled = self.is_admin
         self._lock = threading.Lock()
         self.dns_port: Optional[int] = None
+        self.live_active = False
+        self.live_stop = threading.Event()
 
     # -- capabilities / status text ------------------------------------------ #
     def caps(self) -> Dict[str, Any]:
         return {
             "os": "windows", "tray": self.ui is not None, "admin": self.is_admin, "lock": True,
-            "pause": "proxy", "hosts_blocking": self.hosts_enabled, "screenshots": True, "wipe": False,
+            "pause": "proxy", "hosts_blocking": self.hosts_enabled, "screenshots": True, "live_view": True, "wipe": False,
         }
 
     def status_text(self) -> str:
@@ -471,6 +487,8 @@ class AgentCore:
             return "This PC was removed from the hub"
         if not self.connected:
             return "Can't reach the hub right now"
+        if self.live_active:
+            return "Your parent is viewing your screen"
         if self.state["locked"]:
             return "Locked by your parent"
         if self.state["paused"]:
@@ -490,7 +508,7 @@ class AgentCore:
             return
         if not self.auth_ok or not self.connected:
             level = "off"
-        elif self.state["locked"] or self.state["paused"] or self.state["bedtime_active"]:
+        elif self.live_active or self.state["locked"] or self.state["paused"] or self.state["bedtime_active"]:
             level = "warn"
         else:
             level = "ok"
@@ -602,6 +620,14 @@ class AgentCore:
             self.close_app(str(payload.get("app", "")))
         elif action == "snapshot":
             self.snapshot_once("requested")
+        elif action == "live_view":
+            try:
+                seconds = int(payload.get("duration_s", 60))
+            except (TypeError, ValueError):
+                seconds = 60
+            self.start_live_view(seconds)
+        elif action == "stop_live_view":
+            self.stop_live_view()
         elif action == "policy_sync":
             self.refresh_rules()
         elif action == "wipe":
@@ -723,6 +749,49 @@ class AgentCore:
         log.info("Screenshot sent (%s, %d KB)", reason, len(jpeg) // 1024)
         return True
 
+    # -- live view ------------------------------------------------------------------------ #
+    def start_live_view(self, duration_s: int) -> bool:
+        """Send a picture of the screen about once a second, for a short time, and tell the person at the PC."""
+        duration_s = max(LIVE_MIN_S, min(LIVE_MAX_S, int(duration_s)))
+        with self._lock:
+            if self.live_active or self.state["locked"] or not self.connected:
+                return False
+            self.live_active = True
+            self.live_stop.clear()
+        self.notify("Himaya", f"Your parent is viewing your screen for up to {duration_s} seconds.")
+        self._refresh_ui()
+        threading.Thread(target=self._live_loop, args=(duration_s,), name="himaya-live", daemon=True).start()
+        return True
+
+    def stop_live_view(self) -> None:
+        self.live_stop.set()
+
+    def _live_loop(self, duration_s: int) -> None:
+        deadline = time.time() + duration_s
+        sent = 0
+        try:
+            while time.time() < deadline and not self.live_stop.is_set() and not self.stop_event.is_set():
+                if self.state["locked"]:
+                    break
+                began = time.time()
+                try:
+                    jpeg = self.platform.grab_screenshot_jpeg(quality=45, max_width=960)
+                    if not self.client.upload_live_frame(jpeg):
+                        break
+                    sent += 1
+                except (HubUnreachable, AuthRejected):
+                    break
+                except Exception:  # noqa: BLE001 - e.g. no desktop available
+                    log.exception("Live frame failed")
+                    break
+                self.live_stop.wait(max(0.0, LIVE_FRAME_GAP_S - (time.time() - began)))
+        finally:
+            with self._lock:
+                self.live_active = False
+            log.info("Live view ended (%d pictures)", sent)
+            self.notify("Himaya", "Live view ended.")
+            self._refresh_ui()
+
     # -- loops ----------------------------------------------------------------------------- #
     def _loop(self, name: str, interval: float, fn: Callable[[], None]) -> None:
         failures = 0
@@ -780,16 +849,28 @@ def load_config(path: Optional[Path] = None) -> Dict[str, Any]:
     return config
 
 
+def log_paths() -> List[Path]:
+    """Where the log may go, best first: next to the agent, then the signed-in user's own folder."""
+    paths = [LOG_PATH]
+    local = os.environ.get("LOCALAPPDATA")
+    if local:
+        paths.append(Path(local) / "HimayaAgent" / "agent.log")
+    return paths
+
+
 def setup_logging(console: bool) -> None:
     root = logging.getLogger("himaya")
     root.setLevel(logging.INFO)
     fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
-    try:
-        file_handler = logging.handlers.RotatingFileHandler(LOG_PATH, maxBytes=200_000, backupCount=2, encoding="utf-8")
+    for path in log_paths():
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            file_handler = logging.handlers.RotatingFileHandler(path, maxBytes=200_000, backupCount=2, encoding="utf-8")
+        except OSError:
+            continue  # e.g. a hardened install: C:\Program Files\Himaya is read-only for the child, so try their own folder
         file_handler.setFormatter(fmt)
         root.addHandler(file_handler)
-    except OSError:
-        pass
+        break
     if console and sys.stderr is not None:
         stream = logging.StreamHandler()
         stream.setFormatter(fmt)

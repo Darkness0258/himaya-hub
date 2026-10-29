@@ -17,6 +17,7 @@ import secrets
 import shutil
 import socket
 import sys
+import threading
 import time
 import urllib.parse
 import urllib.request
@@ -126,6 +127,13 @@ def ping_public_url(url: str) -> bool:
         return False
 
 
+# Live view is deliberately short, bounded and visible to the child (the agent shows a notice and a tray indicator).
+LIVE_DEFAULT_S = 60
+LIVE_MIN_S = 10
+LIVE_MAX_S = 120
+LIVE_MIN_GAP_S = 0.4  # at most ~2 frames per second are accepted
+
+
 class Hub:
     """All mutable state of one hub instance (kept off module globals so tests can isolate it)."""
 
@@ -142,6 +150,9 @@ class Hub:
         self.tasks: List[asyncio.Task] = []
         self.dns_block_seen: Dict[Any, float] = {}
         self.last_push: Dict[str, float] = {}
+        # Live view sessions, by device id. Memory only: a frame is never written to disk.
+        self.live: Dict[str, Dict[str, Any]] = {}
+        self.live_lock = threading.Lock()
         self.new_admin_key: Optional[str] = None
         self.started_at = time.time()
 
@@ -179,6 +190,28 @@ def create_app(settings: Optional[config.Settings] = None) -> FastAPI:
         path = f"/snapshots/{device_id}/{filename}"
         exp, sig = hub.auth.sign(path, ttl_s)
         return f"{path}?exp={exp}&sig={sig}"
+
+    def signed_live_url(device_id: str, ttl_s: int) -> str:
+        path = f"/live/{device_id}"
+        exp, sig = hub.auth.sign(path, ttl_s)
+        return f"{path}?exp={exp}&sig={sig}"
+
+    def end_live(device_id: str, reason: str) -> bool:
+        """Close a live view session (if any), forget its last frame, and record that it ended."""
+        with hub.live_lock:
+            session = hub.live.pop(device_id, None)
+        if session is None:
+            return False
+        device = database.get_device(device_id)
+        emit(device_id, "live_ended", {"reason": reason, "frames": session["frames"], "name": device["name"] if device else ""})
+        return True
+
+    def expire_live() -> None:
+        now = time.time()
+        with hub.live_lock:
+            due = [device_id for device_id, session in hub.live.items() if now >= session["expires"]]
+        for device_id in due:
+            end_live(device_id, "time ran out")
 
     def decorate_event(event: Dict[str, Any]) -> Dict[str, Any]:
         if event.get("type") == "screenshot":
@@ -273,6 +306,7 @@ def create_app(settings: Optional[config.Settings] = None) -> FastAPI:
             await asyncio.sleep(hub.settings.watchdog_interval_s)
             ticks += 1
             try:
+                await asyncio.to_thread(expire_live)
                 await asyncio.to_thread(check_dark_devices)
                 if ticks % 3 == 0:  # also keeps DNS policy (device IPs, bedtime) fresh
                     await asyncio.to_thread(refresh_filter)
@@ -566,6 +600,8 @@ def create_app(settings: Optional[config.Settings] = None) -> FastAPI:
     @app.delete("/devices/{device_id}")
     def delete_device(device_id: str = PathParam(..., pattern=DEVICE_ID_PATTERN), _: security.Identity = Depends(require_parent)) -> Dict[str, Any]:
         get_device_or_404(device_id)
+        with hub.live_lock:
+            hub.live.pop(device_id, None)
         hub.auth.revoke_device(device_id)
         database.delete_device(device_id)
         folder = safe_join(settings.snapshots_dir, device_id)
@@ -685,11 +721,45 @@ def create_app(settings: Optional[config.Settings] = None) -> FastAPI:
     # ------------------------------------------------------------------ #
     # Remote actions (parent -> device)
     # ------------------------------------------------------------------ #
+    def live_view_action(device: Dict[str, Any], action: RemoteAction, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Start or stop a live view. It follows the same consent rule as screenshots: no screenshots, no live view."""
+        device_id = device["device_id"]
+        if action == RemoteAction.STOP_LIVE_VIEW:
+            if end_live(device_id, "stopped by the parent"):
+                database.queue_command(device_id, "stop_live_view", {})
+            return {"status": "dispatched", "action": action.value, "device": device_out(device)}
+        if not (device.get("caps") or {}).get("live_view"):
+            raise HTTPException(400, "This device can't do live view yet. Ask for a screenshot instead.")
+        if device["status"] == "offline":
+            raise HTTPException(409, "This device is offline, so live view can't start.")
+        if device["locked"]:
+            raise HTTPException(409, "The screen is locked, so there is nothing to show.")
+        if database.get_device_rules(device_id)["snapshot_interval_s"] <= 0:
+            raise HTTPException(409, "Screenshots are turned off for this device. Turn them on under Rules to allow live view.")
+        try:
+            duration = int(payload.get("duration_s", LIVE_DEFAULT_S))
+        except (TypeError, ValueError):
+            duration = LIVE_DEFAULT_S
+        duration = max(LIVE_MIN_S, min(LIVE_MAX_S, duration))
+        now = time.time()
+        with hub.live_lock:
+            hub.live[device_id] = {"started": now, "expires": now + duration, "frame": None, "last_upload": 0.0, "frames": 0}
+        database.queue_command(device_id, "live_view", {"duration_s": duration})
+        emit(device_id, "live_started", {"duration_s": duration, "name": device["name"]})
+        return {
+            "status": "dispatched",
+            "action": action.value,
+            "device": device_out(device),
+            "live": {"duration_s": duration, "url": signed_live_url(device_id, duration + 30)},
+        }
+
     @app.post("/admin/{device_id}/action")
     def remote_action(body: ActionRequest, device_id: str = PathParam(..., pattern=DEVICE_ID_PATTERN), _: security.Identity = Depends(require_parent)) -> Dict[str, Any]:
         device = get_device_or_404(device_id)
         action = body.action
         payload = dict(body.payload)
+        if action in (RemoteAction.LIVE_VIEW, RemoteAction.STOP_LIVE_VIEW):
+            return live_view_action(device, action, payload)
         command_payload: Dict[str, Any] = {}
         event_type = EventType.REMOTE_ACTION.value
         event_data: Dict[str, Any] = {"action": action.value}
@@ -854,6 +924,60 @@ def create_app(settings: Optional[config.Settings] = None) -> FastAPI:
             return {"status": "ok", "snapshot": {**record, "url": signed_snapshot_url(device_id, filename)}}
 
         return await asyncio.to_thread(store)
+
+    @app.post("/agents/{device_id}/live-frame")
+    async def upload_live_frame(
+        file: UploadFile = File(...),
+        device_id: str = PathParam(..., pattern=DEVICE_ID_PATTERN),
+        _: security.Identity = Depends(require_device_access),
+    ) -> Dict[str, Any]:
+        limit = settings.snapshot_max_bytes
+        content = await file.read(limit + 1)
+        if len(content) > limit:
+            raise HTTPException(413, f"Frame is larger than {limit // 1024} KB.")
+        if not content.startswith(b"\xff\xd8\xff"):
+            raise HTTPException(415, "Frames must be JPEG images.")
+        now = time.time()
+        expired = False
+        remaining = 0.0
+        frames = 0
+        with hub.live_lock:
+            session = hub.live.get(device_id)
+            if session is None:
+                raise HTTPException(409, "No live view is active for this device.")  # the agent stops on this
+            if now >= session["expires"]:
+                expired = True
+            elif now - session["last_upload"] < LIVE_MIN_GAP_S:
+                raise HTTPException(429, "Frames are coming too fast.")
+            else:
+                session.update(frame=content, last_upload=now, frames=session["frames"] + 1)
+                remaining = session["expires"] - now
+                frames = session["frames"]
+        if expired:
+            end_live(device_id, "time ran out")
+            raise HTTPException(409, "The live view time has run out.")
+        return {"status": "ok", "remaining_s": round(remaining, 1), "frames": frames}
+
+    @app.get("/live/{device_id}")
+    def serve_live_frame(
+        device_id: str = PathParam(..., pattern=DEVICE_ID_PATTERN),
+        exp: Optional[int] = Query(None),
+        sig: Optional[str] = Query(None, max_length=80),
+        x_api_key: Optional[str] = Header(default=None, alias="X-API-Key"),
+    ) -> Response:
+        path = f"/live/{device_id}"
+        allowed = bool(exp is not None and sig and hub.auth.check_signature(path, exp, sig))
+        if not allowed and x_api_key:
+            identity = hub.auth.verify(x_api_key)
+            allowed = bool(identity and identity.role == "parent")
+        if not allowed:
+            raise HTTPException(403, "This live view link is missing or has expired. Start live view again.")
+        with hub.live_lock:
+            session = hub.live.get(device_id)
+            frame = session["frame"] if session and time.time() < session["expires"] else None
+        if frame is None:
+            raise HTTPException(404, "No live frame yet.")
+        return Response(content=frame, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
 
     # ------------------------------------------------------------------ #
     # Snapshots (parent)

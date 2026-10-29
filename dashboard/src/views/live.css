@@ -1,0 +1,22 @@
+.live { display: grid; gap: var(--s-3); }
+.live__screen {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.live__frame { display: block; width: 100%; height: auto; }
+.live__wait { color: var(--text-2); font-size: var(--fs-sm); padding: var(--s-5); text-align: center; }
+.live__status { display: flex; align-items: center; gap: var(--s-2); font-size: var(--fs-sm); color: var(--text-2); margin: 0; }
+.live__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--bad);
+  animation: live-pulse 1.4s ease-in-out infinite;
+}
+@keyframes live-pulse { 50% { opacity: 0.35; transform: scale(0.8); } }
+@media (prefers-reduced-motion: reduce) { .live__dot { animation: none; } }

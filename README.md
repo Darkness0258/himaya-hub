@@ -90,6 +90,7 @@ Each device then appears on the Home screen within seconds.
 
 * The parent state (**locked**, **paused**, bedtime) lives on the hub. Agents receive it in every heartbeat and enforce it, so a missed command cannot leave a device out of step.
 * One-off commands (message, screenshot request, close app, erase) go through a queue that hands each command out exactly once.
+* Away from home (HTTPS or WireGuard): [docs/REMOTE-ACCESS.md](docs/REMOTE-ACCESS.md). What each tamper-resistance level stops: [docs/TAMPER-RESISTANCE.md](docs/TAMPER-RESISTANCE.md).
 * Details of every endpoint: [docs/API.md](docs/API.md). Threat model and credentials: [docs/SECURITY.md](docs/SECURITY.md).
 
 ## How the rules are kept
@@ -105,12 +106,12 @@ Each device then appears on the Home screen within seconds.
 
 Read these before relying on Himaya.
 
-* **Tamper-evident, not tamper-proof.** A child with an unrestricted Windows account can stop the Python agent in Task Manager. The parent is alerted when the device goes quiet. For stricter control use a standard (non-admin) child account, or Android Device Owner mode.
+* **Tamper-evident by default; hardening is opt-in** (see [docs/TAMPER-RESISTANCE.md](docs/TAMPER-RESISTANCE.md)). **Tamper-evident, not tamper-proof.** A child with an unrestricted Windows account can stop the Python agent in Task Manager. The parent is alerted when the device goes quiet. For stricter control use a standard (non-admin) child account, or Android Device Owner mode.
 * **Windows internet pause** uses the per-user proxy setting. It covers browsers and most apps, not everything. Pointing the PC's DNS at the hub is stricter (run the hub's DNS on port 53, see [docs/DEPLOY.md](docs/DEPLOY.md)).
 * **Windows website blocking** through the hosts file needs the agent to run as Administrator. Without it the dashboard says so, and DNS-level blocking still works.
 * **Android screenshots** cannot be scheduled silently, by design of Android. Each one needs the child to tap Allow.
 * **Strict "Private DNS"** on an Android phone bypasses the DNS filter. Himaya reports a VPN or filter being switched off, but cannot lock that setting without Device Owner mode.
-* **Live view** (a real-time screen session) is not built; "Screenshot now" is the on-demand mode.
+* **Live view** works on **Windows** only: up to two minutes, about one picture a second, announced on the child's screen, never saved. On Android it is not built (each screen capture needs the child's approval and a foreground service); use "Screenshot now".
 * The Android app has been type-checked and its protocol and packet code tested against the real hub, but it has not been built with Gradle or run on a phone in this release. Build it in Android Studio and see [docs/ANDROID.md](docs/ANDROID.md).
 
 ## Configuration

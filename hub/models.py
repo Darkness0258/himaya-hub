@@ -50,6 +50,8 @@ class EventType(str, Enum):
     REMOTE_ACTION = "remote_action"
     AGENT_STOPPED = "agent_stopped"
     ENFORCEMENT_NOTICE = "enforcement_notice"
+    LIVE_STARTED = "live_started"
+    LIVE_ENDED = "live_ended"
 
 
 class RemoteAction(str, Enum):
@@ -62,6 +64,8 @@ class RemoteAction(str, Enum):
     FORCE_CLOSE_APP = "force_close_app"
     PUSH_NOTIFICATION = "push_notification"
     SNAPSHOT = "snapshot"
+    LIVE_VIEW = "live_view"
+    STOP_LIVE_VIEW = "stop_live_view"
     WIPE = "wipe"
 
 

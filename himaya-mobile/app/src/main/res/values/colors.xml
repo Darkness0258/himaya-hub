@@ -16,4 +16,11 @@
     <color name="status_muted">#D7DDF5</color>
     <color name="error">#BF2D39</color>
     <color name="accent">#3350D8</color>
+
+    <color name="status_grad_start">#3350D8</color>
+    <color name="status_grad_end">#16225C</color>
+    <color name="gold_line">#66E8C277</color>
+    <color name="input_bg">#F3F4FB</color>
+    <color name="text_hint">#7A84A8</color>
+    <color name="on_gold">#2A1E05</color>
 </resources>

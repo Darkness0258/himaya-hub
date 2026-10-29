@@ -58,3 +58,6 @@ dashboard_*.png
 enrollment_*.png
 policies_*.png
 screen_*.png
+
+# ---- WireGuard keys made by tools/wg_setup.py (SECRET) -------------------
+wireguard/

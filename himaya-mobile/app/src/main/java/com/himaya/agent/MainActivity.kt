@@ -45,7 +45,7 @@ class MainActivity : AppCompatActivity() {
         /** "192.168.1.20:8000", "http://hub.local:8000/anything" -> "http://192.168.1.20:8000". Null if it is not a plain hub address. */
         fun normalizeHub(input: String): String? {
             var text = input.trim()
-            if (text.isEmpty()) return null
+            if (text.isEmpty() || looksLikeKey(text)) return null
             if (!text.contains("://")) text = "http://$text"
             val uri = Uri.parse(text)
             val scheme = uri.scheme?.lowercase() ?: return null
@@ -167,7 +167,12 @@ class MainActivity : AppCompatActivity() {
         val owner = if (ownerAdult.isChecked) "adult" else "child"
         when {
             hub == null -> {
-                connectError.text = "Type the hub address like 192.168.1.20:8000 (the Enroll page of the dashboard shows it)."
+                if (looksLikeKey(hubInput.text.toString())) {
+                    hubInput.setText("") // do not leave a secret on screen
+                    connectError.text = "That looks like a secret key, not an address. Type the hub address like 192.168.1.20:8000 instead."
+                } else {
+                    connectError.text = "Type the hub address like 192.168.1.20:8000 (the Enroll page of the dashboard shows it)."
+                }
                 return
             }
             pin.length != 6 || !pin.all { it.isDigit() } -> {

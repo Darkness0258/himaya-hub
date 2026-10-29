@@ -33,6 +33,20 @@ Lock and pause follow the hub's **state**, not one-off commands, so a missed com
 * **Erase:** not available on Windows.
 * **Tamper:** a user who can open Task Manager can end the process. The parent is told when the PC goes quiet. Use a standard (non-admin) child account.
 
+## Live view
+
+The parent can start a short live view from the dashboard (up to two minutes). The agent sends a small picture of the screen about once a second and tells the person at the PC: a notice appears and the tray icon changes while it runs. It stops by itself, or when the parent stops it, if the PC is locked, or if the hub says no live view is open. Nothing is saved. It only works when screenshots are allowed for that device.
+
+## Hardened install (optional)
+
+The normal install lives in the child's own account, so the child can delete it. `harden.ps1` moves it to `C:\Program Files\Himaya` and starts it from a Task Scheduler job that brings it back within 5 minutes. Run it as Administrator, as the parent, and try `-DryRun` first. Read [../docs/TAMPER-RESISTANCE.md](../docs/TAMPER-RESISTANCE.md) before using it. It has not been run on a real PC yet.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\harden.ps1 -ChildUser sarah -DryRun
+powershell -ExecutionPolicy Bypass -File .\harden.ps1 -ChildUser sarah
+powershell -ExecutionPolicy Bypass -File .\harden.ps1 -ChildUser sarah -Remove
+```
+
 ## Uninstall
 
 Run `uninstall.ps1` from the agent folder (the installer prints the command). It tells the hub, stops the agent, removes the startup shortcut, restores internet settings and removes the hosts block (the last needs Administrator).

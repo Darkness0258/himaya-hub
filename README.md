@@ -137,7 +137,7 @@ hub/             FastAPI hub: API, DNS filter, discovery, storage        (Python
 dashboard/       The parent dashboard (React + TypeScript). Builds into hub/static
 agent-windows/   Windows agent: tray indicator, lock, pause, screenshots (Python)
 himaya-mobile/   Android agent (Kotlin): pairing, DNS-only VPN, lock, messages
-tools/           seed_demo.py (fake data for previews), sync_agent.py, smoke_test.py (check any hub), wg_setup.py (WireGuard), Android contract check
+tools/           seed_demo.py (fake data for previews), sync_agent.py, smoke_test.py (check any hub), wg_setup.py (WireGuard), check_secrets.py, Android contract check
 docs/            API, security, deployment, Android, design notes
 docker-compose.yml, render.yaml   Deployment
 ```
@@ -147,17 +147,20 @@ The original *Himaya — Build Spec* sits beside this folder, as before.
 ## Development and tests
 
 ```bash
-# Hub (133 tests; runs a real DNS server and a real hub)
+# Hub (237 tests; runs a real DNS server and a real hub)
 cd hub && pip install -r requirements-dev.txt && pytest
 
-# Windows agent (38 tests; talks to a real hub in a thread, Windows itself is faked)
+# Windows agent (48 tests; talks to a real hub in a thread, Windows itself is faked)
 cd agent-windows && pytest
 
-# Dashboard (46 unit tests, lint, type-check, and a build into hub/static)
+# Dashboard (52 unit tests, lint, type-check, and a build into hub/static)
 cd dashboard && npm install && npm test && npm run lint && npm run build
 
 # Keep the copy of the agent that the hub serves in step with the source
 python tools/sync_agent.py          # --check in CI
+
+# Fail if a secret or a must-not-commit file is in the project (also part of the hub tests)
+python tools/check_secrets.py
 
 # Try the dashboard with fake data (never against a real family's hub)
 python tools/seed_demo.py --hub http://localhost:8000 --key <admin key>

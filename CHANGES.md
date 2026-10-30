@@ -8,11 +8,14 @@ Live view, a tamper-resistance decision with an opt-in Windows hardening script,
 * **`docs/TAMPER-RESISTANCE.md`**: the decision (evident by default, hardened opt-in, a Windows service not built, and why), what each level stops, and how to apply it.
 * **`agent-windows/harden.ps1`** (opt-in, run by the parent as Administrator): moves the agent to `C:\Program Files\Himaya`, locks it, and starts it from a Task Scheduler job that returns within 5 minutes if closed. Has `-DryRun` and `-Remove`.
 * **`docs/REMOTE-ACCESS.md`**, `docker-compose.https.yml` and `docker/Caddyfile` (HTTPS with an automatic certificate), and `tools/wg_setup.py` (WireGuard configs, pure Python).
+* The Android test `KeysTest.kt` held a real admin key as its example. It now uses an obviously fake one (the real key must be rotated: it is in git history).
 * The Android app refuses an admin or device key typed into the hub address box and clears it. Before, the key was treated as a host name and sent out as a DNS lookup.
 
 * **`tools/smoke_test.py`**: checks any hub from the outside in about ten seconds (health, admin key, database, pairing, heartbeat, screenshot, live view, WebSocket). It pairs a throwaway device and always deletes it, warns about a cloud hub on SQLite, waits for a sleeping free-plan hub to wake, and never prints a key or the PIN.
 * **`docs/TEST-PLAN.md`**: what to test and in which order (hub, then network, then device), what each result means, and what to paste back.
 * **`docs/android-redesign-preview.png`**: a mock render of the new Android icon and main screen, made from the resource files (not a screenshot).
+
+* **`tools/check_secrets.py`** and `hub/tests/test_no_secrets.py`: fail if a real-looking Himaya key, database password, JWT, private key or cloud token is in the project, or a file that must never be committed (`.env`, `*.db`, `admin_key.txt`, `local.properties`, signing keys, WireGuard or AdGuard data). Output is masked.
 
 ## Changed
 
@@ -23,7 +26,7 @@ Live view, a tamper-resistance decision with an opt-in Windows hardening script,
 
 ## Verified
 
-* Hub 200 tests, Windows agent 48 tests (including live view against a real hub and read-only install folders), dashboard 52 tests with typecheck and lint: all passing.
+* Hub 237 tests, Windows agent 48 tests (including live view against a real hub and read-only install folders), dashboard 52 tests with typecheck and lint: all passing.
 * `tools/wg_setup.py` key maths against the RFC 7748 vectors and a second crypto library.
 * `docker/Caddyfile` validated with Caddy 2.8. A hub behind Caddy was exercised over HTTPS: pairing, live view, `wss://`, an oversized upload refused, and a forged `X-Forwarded-For` not dodging the login limit.
 * All three PowerShell scripts (installer, uninstaller, `harden.ps1`) parse; `harden.ps1` decision logic ran against stand-ins for the Windows commands.

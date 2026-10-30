@@ -7,7 +7,7 @@ import org.junit.Test
 class KeysTest {
     @Test
     fun adminAndDeviceKeysAreRecognised() {
-        assertTrue(looksLikeKey("hma_ZxLoy2hLGZBJaP_eOq0nTrMJoVWT6YRJloAaN7jnvr8"))
+        assertTrue(looksLikeKey("hma_EXAMPLE-not-a-real-key-000000000000000000"))
         assertTrue(looksLikeKey("  hag_abc123  "))
         assertTrue(looksLikeKey("hma_x"))
     }

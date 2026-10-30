@@ -37,7 +37,8 @@ Keys have 256 bits of randomness, so a fast hash is appropriate. They are not pa
 ## Your checklist
 
 1. Keep the hub on a computer only you can log into. Never forward port 8000 or 5300 to the internet. Use HTTPS or WireGuard ([REMOTE-ACCESS.md](REMOTE-ACCESS.md)).
-2. Never paste an admin or device key (`hma_...`, `hag_...`) into a chat, a screenshot or the hub address box. If you did, reset it: `python main.py --reset-admin-key`.
+2. Never paste an admin or device key (`hma_...`, `hag_...`) into a chat, a screenshot, the hub address box, **or a file in this project** (code, tests, docs). In examples use an obviously fake one, like `hma_EXAMPLE-not-a-real-key`. If a real one was exposed, rotate it: in the dashboard under Settings (or in the `HIMAYA_ADMIN_KEY` variable if that sets it), or `python main.py --reset-admin-key` on a home hub. Replacing it in a new commit is not enough, because the old value stays in git history.
+   Run `python tools/check_secrets.py` before you push (the test suite runs it too). To make git do it for you: save `python tools/check_secrets.py` as `.git/hooks/pre-commit`.
 3. If `hub/.env` or a database password has ever been shared or committed, change it.
 4. Remove devices you no longer use (it revokes their keys).
 5. Tell the people whose devices you add. Adults must agree.

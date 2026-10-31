@@ -17,16 +17,21 @@ Live view, a tamper-resistance decision with an opt-in Windows hardening script,
 
 * **`tools/check_secrets.py`** and `hub/tests/test_no_secrets.py`: fail if a real-looking Himaya key, database password, JWT, private key or cloud token is in the project, or a file that must never be committed (`.env`, `*.db`, `admin_key.txt`, `local.properties`, signing keys, WireGuard or AdGuard data). Output is masked.
 
+* **GitHub Actions CI** (`.github/workflows/ci.yml`), run on every push: the hub on Python 3.10, 3.12 and 3.13 and on Windows; the Windows agent on Linux and Windows; the dashboard (typecheck, lint, tests, build, and that `hub/static` matches the source); the secret scan; and the **Android unit tests and debug build, with the APK attached to the run**. A CI badge is at the top of the README.
+* `hub/tests/test_powershell_scripts.py`: every `.ps1` plus the generated Windows installer and uninstaller must parse in every PowerShell on the machine (the Windows runner has the 5.1 a family PC uses).
+
 ## Changed
 
 * Windows agent 2.1.0: reports `live_view`; writes its log in the user's own folder when its install folder is read-only.
 * The dashboard shows "Himaya was hardened on this PC" as good news rather than a warning.
-* `.gitignore` covers `wireguard/`.
+* `.gitignore` covers `wireguard/`. `.gitattributes` keeps `gradlew` on LF line endings.
+* A race in one new agent test (it checked the "Live view ended" notice the instant the flag cleared) is fixed; it failed once in four runs on Python 3.10.
 * Android light mode: gold text was only about 1.5:1 contrast and unreadable; it now uses a darker gold (all text pairs checked against WCAG AA, 4.5:1). The header logo's shield is now solid so the gold star reads on both themes.
 
 ## Verified
 
-* Hub 237 tests, Windows agent 48 tests (including live view against a real hub and read-only install folders), dashboard 52 tests with typecheck and lint: all passing.
+* The hub (238 tests) and the Windows agent (48) pass on Python 3.10, 3.12 and 3.13.
+* Hub 238 tests, Windows agent 48 tests (including live view against a real hub and read-only install folders), dashboard 52 tests with typecheck and lint: all passing.
 * `tools/wg_setup.py` key maths against the RFC 7748 vectors and a second crypto library.
 * `docker/Caddyfile` validated with Caddy 2.8. A hub behind Caddy was exercised over HTTPS: pairing, live view, `wss://`, an oversized upload refused, and a forged `X-Forwarded-For` not dodging the login limit.
 * All three PowerShell scripts (installer, uninstaller, `harden.ps1`) parse; `harden.ps1` decision logic ran against stand-ins for the Windows commands.
@@ -34,6 +39,7 @@ Live view, a tamper-resistance decision with an opt-in Windows hardening script,
 
 ## Not verified
 
+* **The CI workflow has never run on GitHub.** It passed `actionlint`, and its Python, agent and dashboard jobs were rehearsed locally, but the Android job's first run will be the first real Gradle build of these changes, and the Windows jobs the first run on real Windows.
 * Android: the `MainActivity` edit and the new resources need your Android Studio build. Live view is **not** built for Android.
 * `harden.ps1` on a real Windows PC. Live view on a real Windows desktop.
 * The Let's Encrypt certificate step (needs a real domain), a WireGuard tunnel end to end, Docker/Render.

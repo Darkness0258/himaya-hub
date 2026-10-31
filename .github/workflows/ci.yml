@@ -1,0 +1,145 @@
+# Runs on every push and pull request. Open the repository's "Actions" tab to see the results.
+# Green = everything below passed. Red = click the failed job, then the first red step; that line is the clue.
+#
+# The Android job also builds an installable debug APK. Download it from the bottom of the run's page
+# ("Artifacts", himaya-debug-apk), unzip it, and copy the .apk to the phone.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:   # lets you start it by hand: Actions, CI, Run workflow
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secrets:
+    name: No secrets in the project
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: python tools/check_secrets.py
+
+  hub:
+    name: Hub (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, python: "3.10" }
+          - { os: ubuntu-latest, python: "3.12" }
+          - { os: ubuntu-latest, python: "3.13" }
+          - { os: windows-latest, python: "3.12" }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: hub/requirements-dev.txt
+      - run: python -m pip install -r requirements-dev.txt
+        working-directory: hub
+      - run: python -m pytest -q -ra
+        working-directory: hub
+
+  agent:
+    name: Windows agent (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, python: "3.10" }
+          - { os: ubuntu-latest, python: "3.13" }
+          - { os: windows-latest, python: "3.12" }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: hub/requirements-dev.txt
+      - run: python -m pip install -r hub/requirements-dev.txt
+      - name: The hub's copy of the agent must match the source
+        run: python tools/sync_agent.py --check
+      - run: python -m pytest -q -ra
+        working-directory: agent-windows
+
+  dashboard:
+    name: Dashboard
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - run: npm ci
+        working-directory: dashboard
+      - run: npm run typecheck
+        working-directory: dashboard
+      - run: npm run lint
+        working-directory: dashboard
+      - run: npm test
+        working-directory: dashboard
+      - run: npm run build
+        working-directory: dashboard
+      - name: The built dashboard committed in hub/static must match the source
+        run: |
+          if [ -n "$(git status --porcelain -- hub/static)" ]; then
+            echo "::error::hub/static is out of date. Run 'npm run build' in the dashboard folder and commit hub/static."
+            git status --short -- hub/static
+            exit 1
+          fi
+
+  android:
+    name: Android build and unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: "platforms;android-34 build-tools;34.0.0"
+      - name: Make the Gradle wrapper runnable (git does not keep the executable bit when files come from Windows)
+        run: chmod +x himaya-mobile/gradlew
+      - name: Unit tests
+        run: ./gradlew --no-daemon --console=plain testDebugUnitTest
+        working-directory: himaya-mobile
+      - name: Build the debug APK
+        run: ./gradlew --no-daemon --console=plain assembleDebug
+        working-directory: himaya-mobile
+      - name: Keep the APK so it can be installed on a phone
+        uses: actions/upload-artifact@v7
+        with:
+          name: himaya-debug-apk
+          path: himaya-mobile/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30
+      - name: Keep the test report if something failed
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-test-report
+          path: himaya-mobile/app/build/reports/
+          if-no-files-found: ignore
+          retention-days: 7

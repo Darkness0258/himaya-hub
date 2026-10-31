@@ -424,8 +424,9 @@ class TestLiveView:
         enrolled.parent("post", f"/admin/{device_id}/action", json={"action": "stop_live_view"})
         core.poll_commands_once()
         assert wait_for(lambda: not core.live_active, timeout=5)
-        assert any(message == "Live view ended." for _, message in enrolled.ui.notifications)
-        assert enrolled.ui.levels[-1][0] == "ok"
+        # The flag clears a moment before the notice and the tray refresh, so wait for those too.
+        assert wait_for(lambda: any(message == "Live view ended." for _, message in enrolled.ui.notifications), timeout=5)
+        assert wait_for(lambda: enrolled.ui.levels[-1][0] == "ok", timeout=5)
 
     def test_it_stops_by_itself_when_the_hub_has_no_session(self, enrolled):
         core = enrolled.core

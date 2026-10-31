@@ -1,5 +1,7 @@
 # Himaya
 
+[![CI](https://github.com/Darkness0258/himaya-hub/actions/workflows/ci.yml/badge.svg)](https://github.com/Darkness0258/himaya-hub/actions/workflows/ci.yml)
+
 **Family device safety, run from a computer you own.**
 One dashboard to see whether your family's devices are okay, and to act in one tap: lock a screen, pause the internet, send a message, change what is blocked.
 
@@ -146,8 +148,10 @@ The original *Himaya — Build Spec* sits beside this folder, as before.
 
 ## Development and tests
 
+GitHub runs all of this on every push (`.github/workflows/ci.yml`; see the **Actions** tab): the hub on Python 3.10, 3.12 and 3.13 and on Windows, the Windows agent, the dashboard (and that the built copy in `hub/static` matches its source), the secret scan, and the **Android build, which also produces an installable debug APK** (open the run, then *Artifacts*, then `himaya-debug-apk`).
+
 ```bash
-# Hub (237 tests; runs a real DNS server and a real hub)
+# Hub (238 tests; runs a real DNS server and a real hub)
 cd hub && pip install -r requirements-dev.txt && pytest
 
 # Windows agent (48 tests; talks to a real hub in a thread, Windows itself is faked)

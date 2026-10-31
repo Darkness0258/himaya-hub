@@ -33,7 +33,7 @@ It asks for the admin key, pretends to be one Windows PC, checks everything the 
 
 ## Stage 2: Android
 
-1. Build in Android Studio. If it fails, paste the **first** red error, not the last, and guess its kind first: version, missing SDK, or Kotlin.
+1. Get the app. **Easiest:** open the repository on GitHub, **Actions**, the latest CI run, scroll to **Artifacts** and download `himaya-debug-apk` (GitHub builds it for you). Unzip it, copy the `.apk` to the phone, open it, and allow "install unknown apps" when asked. **Or** build in Android Studio. Either way, if the build fails, paste the **first** red error, not the last, and guess its kind first: version, missing SDK, or Kotlin.
 2. On the phone: Add a device on the dashboard, Android, scan the QR code (or type the address, never a key, plus the PIN).
 3. Switch on protection (step 2 in the app) and accept the VPN prompt.
 4. Look at the app. It should match `docs/android-redesign-preview.png`: the shield logo, gold section titles, gold Connect button. This image is a mock render of the resource files, not a real screenshot, so small differences are normal.

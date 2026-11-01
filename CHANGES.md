@@ -1,6 +1,6 @@
 # Unreleased (on top of 2.0.0)
 
-Live view, a tamper-resistance decision with an opt-in Windows hardening script, and a guide for reaching the hub away from home. **Nothing here has been run on a real Windows PC or built for Android yet** (see "Verified" below).
+Live view, a tamper-resistance decision with an opt-in Windows hardening script, and a guide for reaching the hub away from home. **Nothing here has been run on a real Windows PC or on a phone yet**, though GitHub Actions now builds and tests it (see "Verified" and "Not verified" below).
 
 ## Added
 
@@ -27,6 +27,7 @@ Live view, a tamper-resistance decision with an opt-in Windows hardening script,
 * `.gitignore` covers `wireguard/`. `.gitattributes` keeps `gradlew` on LF line endings.
 * A race in one new agent test (it checked the "Live view ended" notice the instant the flag cleared) is fixed; it failed once in four runs on Python 3.10.
 * Android light mode: gold text was only about 1.5:1 contrast and unreadable; it now uses a darker gold (all text pairs checked against WCAG AA, 4.5:1). The header logo's shield is now solid so the gold star reads on both themes.
+* `himaya-mobile/gradlew` is now the official Gradle 8.7 script. The old one used bash-only syntax (`function`, arrays) under a `#!/bin/sh` line, so it failed on Ubuntu, where `sh` is dash.
 
 ## Verified
 
@@ -36,11 +37,11 @@ Live view, a tamper-resistance decision with an opt-in Windows hardening script,
 * `docker/Caddyfile` validated with Caddy 2.8. A hub behind Caddy was exercised over HTTPS: pairing, live view, `wss://`, an oversized upload refused, and a forged `X-Forwarded-For` not dodging the login limit.
 * All three PowerShell scripts (installer, uninstaller, `harden.ps1`) parse; `harden.ps1` decision logic ran against stand-ins for the Windows commands.
 * The new Android key guard compiles under `kotlinc` and passes its checks.
+* **CI is green on GitHub:** every job passed, including the hub and agent on Windows runners, the dashboard, the secret scan, and the Android unit tests and debug build, which produced the `himaya-debug-apk` artifact. The first run failed only in the Android job, because of the old `gradlew` (see Changed).
 
 ## Not verified
 
-* **The CI workflow has never run on GitHub.** It passed `actionlint`, and its Python, agent and dashboard jobs were rehearsed locally, but the Android job's first run will be the first real Gradle build of these changes, and the Windows jobs the first run on real Windows.
-* Android: the `MainActivity` edit and the new resources need your Android Studio build. Live view is **not** built for Android.
+* Android: the app builds and its unit tests pass in CI, but it has not been run on a phone. Live view is **not** built for Android.
 * `harden.ps1` on a real Windows PC. Live view on a real Windows desktop.
 * The Let's Encrypt certificate step (needs a real domain), a WireGuard tunnel end to end, Docker/Render.
 

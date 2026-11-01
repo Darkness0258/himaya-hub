@@ -115,7 +115,7 @@ Read these before relying on Himaya.
 * **Android screenshots** cannot be scheduled silently, by design of Android. Each one needs the child to tap Allow.
 * **Strict "Private DNS"** on an Android phone bypasses the DNS filter. Himaya reports a VPN or filter being switched off, but cannot lock that setting without Device Owner mode.
 * **Live view** works on **Windows** only: up to two minutes, about one picture a second, announced on the child's screen, never saved. On Android it is not built (each screen capture needs the child's approval and a foreground service); use "Screenshot now".
-* The Android app has been type-checked and its protocol and packet code tested against the real hub, but it has not been built with Gradle or run on a phone in this release. Build it in Android Studio and see [docs/ANDROID.md](docs/ANDROID.md).
+* The Android app is built with Gradle and its unit tests run in CI on every push, and its protocol and packet code is tested against the real hub. It has not been run on a phone in this release yet: install the debug APK from a CI run's Artifacts (or build it in Android Studio) and see [docs/ANDROID.md](docs/ANDROID.md).
 
 ## Configuration
 

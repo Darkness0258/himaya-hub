@@ -2,7 +2,7 @@
 
 The Android app (`himaya-mobile`, package `com.himaya.agent`) pairs a phone with your hub, keeps a visible "Himaya is active" notification, and carries out what the parent sets: lock, messages, internet pause, website filtering, screenshot requests.
 
-> **Status of this release:** the app was type-checked against the Android 34 platform, its resources and manifest were validated with `aapt`, and its protocol and DNS-packet code was tested against the real hub (see below). It has **not** been built with Gradle or run on a phone yet. Expect to fix small build-environment details the first time you open it in Android Studio.
+> **Status of this release:** GitHub Actions builds the app with Gradle and runs its unit tests on every push, and attaches the debug APK to the run (Artifacts, `himaya-debug-apk`). The app was also type-checked against the Android 34 platform, its resources and manifest were validated with `aapt`, and its protocol and DNS-packet code was tested against the real hub (see below). It has **not** been run on a phone yet: follow stage 2 of [TEST-PLAN.md](TEST-PLAN.md).
 
 ## Build
 

@@ -18,6 +18,7 @@ import android.os.HandlerThread
 import android.os.IBinder
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Takes ONE screenshot after the child tapped "Allow" in Android's own screen-capture dialog, sends it to the
@@ -37,6 +38,10 @@ class ScreenShareService : Service() {
         private const val EXTRA_RESULT_CODE = "result_code"
         private const val EXTRA_DATA = "data"
         private const val MAX_LONG_SIDE = 1280
+
+        // The first frames out of a brand-new VirtualDisplay are often black: the display
+        // hasn't started mirroring real content into the surface yet. Skip a few before capturing.
+        private const val FRAMES_TO_SKIP = 3
 
         fun start(context: Context, resultCode: Int, data: Intent) {
             context.startForegroundService(
@@ -109,10 +114,14 @@ class ScreenShareService : Service() {
             }
         }, handler)
 
-        val imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
+        val imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 3)
         reader = imageReader
         imageReader.setOnImageAvailableListener({ source ->
             val image = source.acquireLatestImage() ?: return@setOnImageAvailableListener
+            if (framesSeen.incrementAndGet() <= FRAMES_TO_SKIP) {
+                image.close()
+                return@setOnImageAvailableListener
+            }
             if (finished.get() || !oneShot.compareAndSet(false, true)) {
                 image.close()
                 return@setOnImageAvailableListener
@@ -134,6 +143,7 @@ class ScreenShareService : Service() {
     }
 
     private val oneShot = AtomicBoolean(false)
+    private val framesSeen = AtomicInteger(0)
 
     /** Convert an RGBA_8888 [Image] to JPEG. The row stride can be wider than the picture, so the padding is cropped away. */
     private fun toJpeg(image: Image, width: Int, height: Int): ByteArray {
